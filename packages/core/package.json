@@ -1,5 +1,5 @@
 {
-  "name": "usevantage",
+  "name": "@usevantage/core",
   "version": "0.0.1",
   "description": "Vantage core — Handler, processEvent, adapter interfaces, event schema/validation. Zero infra dependencies.",
   "type": "module",
@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@vantage/config": "workspace:*",
+    "@usevantage/config": "workspace:*",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

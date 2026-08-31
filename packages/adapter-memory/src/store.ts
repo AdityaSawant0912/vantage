@@ -1,4 +1,4 @@
-import type { ScopedEvent, SourceId, StoreAdapter } from "usevantage";
+import type { ScopedEvent, SourceId, StoreAdapter } from "@usevantage/core";
 
 /**
  * In-process store. `getEvents` is a test/inspection hook, not part of

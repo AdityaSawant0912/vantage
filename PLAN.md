@@ -18,7 +18,7 @@ Packages should mirror the diagram's boundary between "your library code" and "i
 ```
 vantage/
 ├── packages/
-│   ├── core/                  # usevantage — Handler, processEvent, adapter interfaces, event schema/validation
+│   ├── core/                  # @usevantage/core — Handler, processEvent, adapter interfaces, event schema/validation
 │   │                           # zero infra deps. This is the package whose public API must stay stable.
 │   ├── tracker/                # client-side drop-in script (pageviews, custom events, batching/beacon)
 │   ├── adapter-memory/         # in-process QueueAdapter + reference StoreAdapter — ships as the zero-infra default
@@ -30,7 +30,7 @@ vantage/
 └── CLAUDE.md
 ```
 
-**Why adapters are separate packages, not folders inside core:** this is likely the single biggest upgrade over Optimus — nobody installing `usevantage` for a single-process deploy should pull in `ioredis` or `pg` as a dependency. Core stays dependency-light and its version number means something specific (interface stability), separate from adapter churn.
+**Why adapters are separate packages, not folders inside core:** this is likely the single biggest upgrade over Optimus — nobody installing `@usevantage/core` for a single-process deploy should pull in `ioredis` or `pg` as a dependency. Core stays dependency-light and its version number means something specific (interface stability), separate from adapter churn.
 
 ---
 

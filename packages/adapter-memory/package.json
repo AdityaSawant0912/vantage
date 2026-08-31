@@ -1,7 +1,7 @@
 {
-  "name": "@vantage/adapter-memory",
+  "name": "@usevantage/adapter-memory",
   "version": "0.0.1",
-  "description": "In-process QueueAdapter + StoreAdapter — the zero-infra default for usevantage.",
+  "description": "In-process QueueAdapter + StoreAdapter — the zero-infra default for @usevantage/core.",
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
@@ -19,12 +19,12 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "usevantage": "workspace:*"
+    "@usevantage/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "@vantage/config": "workspace:*",
-    "usevantage": "workspace:*",
+    "@usevantage/config": "workspace:*",
+    "@usevantage/core": "workspace:*",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

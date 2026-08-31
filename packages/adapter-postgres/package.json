@@ -1,7 +1,7 @@
 {
-  "name": "@vantage/adapter-postgres",
+  "name": "@usevantage/adapter-postgres",
   "version": "0.0.1",
-  "description": "Postgres-backed StoreAdapter for usevantage.",
+  "description": "Postgres-backed StoreAdapter for @usevantage/core.",
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
@@ -22,13 +22,13 @@
     "pg": "^8.13.1"
   },
   "peerDependencies": {
-    "usevantage": "workspace:*"
+    "@usevantage/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/pg": "^8.11.10",
-    "@vantage/config": "workspace:*",
-    "usevantage": "workspace:*",
+    "@usevantage/config": "workspace:*",
+    "@usevantage/core": "workspace:*",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

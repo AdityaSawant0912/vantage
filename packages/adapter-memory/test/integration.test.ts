@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createHandler, processEvent } from "usevantage";
+import { createHandler, processEvent } from "@usevantage/core";
 import { MemoryQueueAdapter } from "../src/queue.js";
 import { MemoryStoreAdapter } from "../src/store.js";
 

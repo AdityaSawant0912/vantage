@@ -1,5 +1,5 @@
 {
-  "extends": "@vantage/config/tsconfig/lib.json",
+  "extends": "@usevantage/config/tsconfig/lib.json",
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": true

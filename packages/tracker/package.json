@@ -1,5 +1,5 @@
 {
-  "name": "@vantage/tracker",
+  "name": "@usevantage/tracker",
   "version": "0.0.1",
   "description": "Client-side drop-in analytics script for Vantage.",
   "type": "module",
@@ -21,9 +21,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "@vantage/adapter-memory": "workspace:*",
-    "@vantage/config": "workspace:*",
-    "usevantage": "workspace:*",
+    "@usevantage/adapter-memory": "workspace:*",
+    "@usevantage/config": "workspace:*",
+    "@usevantage/core": "workspace:*",
     "jsdom": "^25.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",

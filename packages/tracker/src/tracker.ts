@@ -1,4 +1,4 @@
-import type { VantageEvent } from "usevantage";
+import type { VantageEvent } from "@usevantage/core";
 
 export interface TrackerOptions {
   /** Collector ingest URL, e.g. "https://analytics.example.com/api/event". */
@@ -21,7 +21,7 @@ const DEFAULT_FLUSH_INTERVAL_MS = 5000;
 
 /**
  * "Batching" here means client-side buffering and flush timing, not a
- * bulk wire format — the event schema (usevantage's VantageEvent)
+ * bulk wire format — the event schema (@usevantage/core's VantageEvent)
  * validates one event per request, so each flushed event is still POSTed
  * individually. The auth key travels as a URL query param rather than a
  * header because navigator.sendBeacon can't set custom headers, and both

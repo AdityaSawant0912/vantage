@@ -1,4 +1,4 @@
-import type { QueueAdapter, ScopedEvent } from "usevantage";
+import type { QueueAdapter, ScopedEvent } from "@usevantage/core";
 
 /**
  * In-process FIFO queue. Delivery is asynchronous (queued then drained on

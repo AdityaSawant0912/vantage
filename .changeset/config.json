@@ -5,5 +5,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["docs", "@vantage/config"]
+  "ignore": ["docs", "@usevantage/config"]
 }

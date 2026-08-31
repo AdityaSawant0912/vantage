@@ -1,6 +1,6 @@
 import http from "node:http";
-import { createHandler, processEvent } from "usevantage";
-import { MemoryQueueAdapter, MemoryStoreAdapter } from "@vantage/adapter-memory";
+import { createHandler, processEvent } from "@usevantage/core";
+import { MemoryQueueAdapter, MemoryStoreAdapter } from "@usevantage/adapter-memory";
 
 export interface LocalCollector {
   url: string;

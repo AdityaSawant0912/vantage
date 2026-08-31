@@ -1,5 +1,5 @@
 import Redis, { type RedisOptions } from "ioredis";
-import type { QueueAdapter, ScopedEvent } from "usevantage";
+import type { QueueAdapter, ScopedEvent } from "@usevantage/core";
 
 export interface RedisQueueAdapterOptions {
   /** A connection string (e.g. "redis://127.0.0.1:6379") or ioredis options. */

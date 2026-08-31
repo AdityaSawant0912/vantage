@@ -1,4 +1,4 @@
 import { mergeConfig, defineConfig } from "vitest/config";
-import { baseConfig } from "@vantage/config/vitest";
+import { baseConfig } from "@usevantage/config/vitest";
 
 export default mergeConfig(baseConfig, defineConfig({}));

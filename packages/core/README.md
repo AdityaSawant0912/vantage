@@ -1,4 +1,4 @@
-# usevantage
+# @usevantage/core
 
 Core of Vantage — a self-hosted web analytics library. Zero infra
 dependencies: `Handler`, `processEvent`, and the `QueueAdapter`/

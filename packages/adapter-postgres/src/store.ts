@@ -1,5 +1,5 @@
 import { Pool, type PoolConfig } from "pg";
-import type { ScopedEvent, SourceId, StoreAdapter } from "usevantage";
+import type { ScopedEvent, SourceId, StoreAdapter } from "@usevantage/core";
 
 const VALID_TABLE_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 

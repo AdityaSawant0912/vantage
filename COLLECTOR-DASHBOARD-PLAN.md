@@ -1,8 +1,8 @@
 # Collector + Dashboard — Build Plan (separate project)
 
 This describes a new, separate repo/project — not part of `vantage`. It
-consumes the published `vantage` packages (`usevantage`, `@vantage/tracker`,
-`@vantage/adapter-memory`, `@vantage/adapter-redis`, `@vantage/adapter-postgres`)
+consumes the published `vantage` packages (`@usevantage/core`, `@usevantage/tracker`,
+`@usevantage/adapter-memory`, `@usevantage/adapter-redis`, `@usevantage/adapter-postgres`)
 as npm dependencies, rather than containing any of that library code
 itself. One webapp does both jobs: ingest (the "collector") and the
 read-path UI (the "dashboard") — a single deployable process, not two.
@@ -61,7 +61,7 @@ Dockerfile, one deploy.
 collector-dashboard/
 ├── app/
 │   ├── api/
-│   │   └── ingest/route.ts     # POST — wraps usevantage's createHandler
+│   │   └── ingest/route.ts     # POST — wraps @usevantage/core's createHandler
 │   ├── (dashboard)/
 │   │   ├── page.tsx             # overview: pageviews over time
 │   │   ├── pages/page.tsx       # top pages
@@ -72,7 +72,7 @@ collector-dashboard/
 │   ├── handler.ts               # singleton createHandler() + consume() wiring
 │   └── auth.ts                  # resolveSourceId (static env var, see §4)
 ├── public/
-│   └── tracker.js               # copied from @vantage/tracker's dist/index.global.js at build time
+│   └── tracker.js               # copied from @usevantage/tracker's dist/index.global.js at build time
 ├── Dockerfile
 └── docker-compose.yml           # redis + postgres, for prod-parity local dev
 ```
@@ -84,10 +84,10 @@ collector-dashboard/
 `app/api/ingest/route.ts`:
 
 ```ts
-import { createHandler } from "usevantage";
+import { createHandler } from "@usevantage/core";
 import { getQueueAdapter, getStoreAdapter } from "@/lib/adapters";
 import { resolveSourceId } from "@/lib/auth";
-import { processEvent } from "usevantage";
+import { processEvent } from "@usevantage/core";
 
 const queueAdapter = getQueueAdapter();
 const storeAdapter = getStoreAdapter();
@@ -142,9 +142,9 @@ config/data change, not an architecture change, per PLAN.md §3's
 uses the real ones:
 
 ```ts
-import { MemoryQueueAdapter, MemoryStoreAdapter } from "@vantage/adapter-memory";
-import { RedisQueueAdapter } from "@vantage/adapter-redis";
-import { PostgresStoreAdapter } from "@vantage/adapter-postgres";
+import { MemoryQueueAdapter, MemoryStoreAdapter } from "@usevantage/adapter-memory";
+import { RedisQueueAdapter } from "@usevantage/adapter-redis";
+import { PostgresStoreAdapter } from "@usevantage/adapter-postgres";
 
 export function getQueueAdapter() {
   return process.env.REDIS_URL
@@ -168,9 +168,9 @@ prod; check both env vars are set as part of deploy verification.
 
 ## 6. Tracker embedding
 
-Copy `@vantage/tracker`'s IIFE build into `public/` at build time (a
+Copy `@usevantage/tracker`'s IIFE build into `public/` at build time (a
 `postinstall` or prebuild script copying
-`node_modules/@vantage/tracker/dist/index.global.js` → `public/tracker.js`)
+`node_modules/@usevantage/tracker/dist/index.global.js` → `public/tracker.js`)
 so a site owner embeds it as:
 
 ```html

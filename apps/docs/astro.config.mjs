@@ -6,10 +6,10 @@ import { createStarlightTypeDocPlugin } from "starlight-typedoc";
 // starlightTypeDoc's default export shares one singleton placeholder, so
 // reusing it across packages would collide their reflection sets.
 const apiPackages = [
-  { label: "usevantage", dir: "core", output: "api/core" },
-  { label: "@vantage/tracker", dir: "tracker", output: "api/tracker" },
-  { label: "@vantage/adapter-redis", dir: "adapter-redis", output: "api/adapter-redis" },
-  { label: "@vantage/adapter-postgres", dir: "adapter-postgres", output: "api/adapter-postgres" },
+  { label: "@usevantage/core", dir: "core", output: "api/core" },
+  { label: "@usevantage/tracker", dir: "tracker", output: "api/tracker" },
+  { label: "@usevantage/adapter-redis", dir: "adapter-redis", output: "api/adapter-redis" },
+  { label: "@usevantage/adapter-postgres", dir: "adapter-postgres", output: "api/adapter-postgres" },
 ];
 
 const apiDocs = apiPackages.map(({ label, dir, output }) => {

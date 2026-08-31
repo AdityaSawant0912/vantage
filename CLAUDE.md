@@ -9,7 +9,7 @@ this file wins on *how*.
 ## What this repo is
 
 Vantage — a self-hosted web analytics library and collector. A pure,
-infra-free core (`usevantage`) that validates and processes events behind
+infra-free core (`@usevantage/core`) that validates and processes events behind
 pluggable `QueueAdapter`/`StoreAdapter` interfaces, a client-side tracker
 script, and separately-published adapter packages for real infra (Redis,
 Postgres, etc). Monorepo, multiple packages, published independently. The
@@ -34,7 +34,7 @@ These are copied from `PLAN.md §9` because they're easy to accidentally
 violate mid-implementation. If you think one of these is wrong, **say so and
 stop** — don't quietly work around it.
 
-- The `core` package (`usevantage`) has **zero infra dependencies**. If you
+- The `core` package (`@usevantage/core`) has **zero infra dependencies**. If you
   find yourself importing `ioredis`, `pg`, or any transport/storage client
   inside `packages/core`, stop — that logic belongs in an adapter package
   instead. This is the whole point of the split: self-hosting a single site
@@ -139,7 +139,7 @@ pnpm test
 pnpm --filter "./packages/adapter-*" test
 
 # run tests for a single package
-pnpm --filter usevantage test
+pnpm --filter @usevantage/core test
 
 # typecheck everything
 pnpm typecheck

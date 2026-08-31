@@ -1,5 +1,5 @@
 import { defineConfig } from "tsup";
-import { defineLibConfig } from "@vantage/config/tsup";
+import { defineLibConfig } from "@usevantage/config/tsup";
 
 export default defineConfig(
   defineLibConfig({
