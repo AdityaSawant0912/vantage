@@ -1,29 +1,47 @@
 import { describe, expect, it } from "vitest";
 import type { StoreAdapter } from "../../src/store-adapter.js";
-import type { ScopedEvent } from "../../src/source.js";
+import type { ScopedEvent, SourceId } from "../../src/source.js";
 
-const sampleEvent: ScopedEvent = {
-  v: 1,
-  type: "pageview",
-  url: "https://example.com/",
-  timestamp: Date.now(),
-  sourceId: "test-source",
-};
+function eventFor(sourceId: SourceId, url: string): ScopedEvent {
+  return { v: 1, type: "pageview", url, timestamp: Date.now(), sourceId };
+}
 
 /**
  * Shared contract every StoreAdapter implementation must pass unchanged.
+ * `readEventsForSource` is a test-only inspection hook (StoreAdapter
+ * itself has no read method yet — Phase 5 defines the dashboard's query
+ * shape) that lets this suite prove real isolation: adding a formal read
+ * method to the interface now would force every adapter to implement
+ * queries nothing calls yet.
+ *
  * Call from an adapter package's own test file, e.g.:
  *
- *   runStoreAdapterContractTests(() => new MemoryStoreAdapter());
- *
- * Read-path assertions are added once Phase 5 defines the dashboard's
- * query shape — StoreAdapter has no read methods yet.
+ *   runStoreAdapterContractTests(() => new MemoryStoreAdapter(), {
+ *     readEventsForSource: (adapter, sourceId) => adapter.getEvents(sourceId),
+ *   });
  */
-export function runStoreAdapterContractTests(createAdapter: () => StoreAdapter): void {
+export function runStoreAdapterContractTests<A extends StoreAdapter>(
+  createAdapter: () => A,
+  options: { readEventsForSource: (adapter: A, sourceId: SourceId) => Promise<ScopedEvent[]> | ScopedEvent[] },
+): void {
   describe("StoreAdapter contract", () => {
     it("writes a scoped event without throwing", async () => {
       const adapter = createAdapter();
-      await expect(adapter.write(sampleEvent)).resolves.toBeUndefined();
+      await expect(adapter.write(eventFor("test-source", "https://example.com/"))).resolves.toBeUndefined();
+    });
+
+    it("isolates writes by sourceId — one source's events never appear under another's", async () => {
+      const adapter = createAdapter();
+      await adapter.write(eventFor("source-a", "https://a.example/"));
+      await adapter.write(eventFor("source-b", "https://b.example/"));
+
+      const aEvents = await options.readEventsForSource(adapter, "source-a");
+      const bEvents = await options.readEventsForSource(adapter, "source-b");
+
+      expect(aEvents).toHaveLength(1);
+      expect(aEvents[0]?.url).toBe("https://a.example/");
+      expect(bEvents).toHaveLength(1);
+      expect(bEvents[0]?.url).toBe("https://b.example/");
     });
   });
 }
