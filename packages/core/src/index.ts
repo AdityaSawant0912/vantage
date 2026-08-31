@@ -8,3 +8,5 @@ export {
 export type { ScopedEvent, SourceId } from "./source.js";
 export type { QueueAdapter } from "./queue-adapter.js";
 export type { StoreAdapter } from "./store-adapter.js";
+export { createHandler, type HandlerOptions, type IngestRequest, type IngestResult } from "./handler.js";
+export { processEvent } from "./process-event.js";
