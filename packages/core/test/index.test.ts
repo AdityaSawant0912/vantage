@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { VANTAGE_CORE_VERSION } from "../src/index.js";
+import { EVENT_SCHEMA_VERSION, validateEvent } from "../src/index.js";
 
-describe("usevantage", () => {
-  it("exports a version placeholder", () => {
-    expect(VANTAGE_CORE_VERSION).toBe("0.0.0");
+describe("usevantage barrel export", () => {
+  it("re-exports the event schema API", () => {
+    expect(EVENT_SCHEMA_VERSION).toBe(1);
+    expect(
+      validateEvent({ v: 1, type: "pageview", url: "https://example.com/", timestamp: Date.now() }).ok,
+    ).toBe(true);
   });
 });
