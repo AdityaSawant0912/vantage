@@ -18,7 +18,12 @@ const apiDocs = apiPackages.map(({ label, dir, output }) => {
     sidebarGroup,
     plugin: plugin({
       entryPoints: [`../../packages/${dir}/src/index.ts`],
-      tsconfig: `../../packages/${dir}/tsconfig.json`,
+      // A dedicated docs tsconfig (src only, no test/) — TypeDoc type-checks
+      // the whole program a tsconfig resolves, not just entryPoints, so
+      // pointing it at the package's real tsconfig.json (include: src+test)
+      // fails the docs build on any test-file type issue that has nothing
+      // to do with the public API being documented.
+      tsconfig: `../../packages/${dir}/tsconfig.docs.json`,
       output,
       sidebar: { label },
     }),
