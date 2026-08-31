@@ -1,0 +1,8 @@
+{
+  "extends": "@vantage/config/tsconfig/lib.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src", "test"]
+}

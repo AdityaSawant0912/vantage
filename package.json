@@ -1,14 +1,20 @@
 {
   "name": "vantage",
   "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
+  "description": "Self-hosted web analytics — pure core + pluggable adapters",
+  "private": true,
   "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r --filter=\"./packages/*\" run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "eslint .",
+    "docs:dev": "pnpm --filter docs dev",
+    "docs:build": "pnpm --filter docs build",
+    "changeset": "changeset",
+    "release": "changeset publish"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
@@ -17,5 +23,12 @@
     }
   },
   "packageManager": "pnpm@11.24.0",
-  "type": "module"
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "eslint": "^9.38.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^3.2.4"
+  }
 }
