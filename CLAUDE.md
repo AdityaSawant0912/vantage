@@ -71,12 +71,12 @@ stop** — don't quietly work around it.
 
 ## Working process
 
-- **Work phase by phase**, in the order given in `PLAN.md §11`
-  (scaffolding → contracts → in-memory end-to-end → tracker → deployed
-  collector → dashboard → real adapters → scale-out topology → second
-  source). Don't build the Redis adapter before the in-memory path has real
-  contract-test coverage, and don't wire up scale-out deploy topology before
-  a single collector instance is proven on real traffic.
+- **Work phase by phase**, in the order given in `PLAN.md §3`
+  (scaffolding → contracts → in-memory end-to-end → tracker → real
+  adapters). Don't build the Redis adapter before the in-memory path has
+  real contract-test coverage. The deployed collector, dashboard, and
+  scale-out topology are a separate project now — see
+  `COLLECTOR-DASHBOARD-PLAN.md` — not phases of this repo.
 - **Write tests alongside each phase, not after.** The event validation and
   source-scoping logic especially are easy to get subtly wrong — write
   cross-tenant isolation tests before considering `StoreAdapter` done, not
