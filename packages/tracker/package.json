@@ -1,0 +1,32 @@
+{
+  "name": "@vantage/tracker",
+  "version": "0.0.1",
+  "description": "Client-side drop-in analytics script for Vantage.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./iife": "./dist/index.global.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@vantage/adapter-memory": "workspace:*",
+    "@vantage/config": "workspace:*",
+    "usevantage": "workspace:*",
+    "jsdom": "^25.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
