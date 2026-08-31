@@ -9,6 +9,7 @@ const apiPackages = [
   { label: "usevantage", dir: "core", output: "api/core" },
   { label: "@vantage/tracker", dir: "tracker", output: "api/tracker" },
   { label: "@vantage/adapter-redis", dir: "adapter-redis", output: "api/adapter-redis" },
+  { label: "@vantage/adapter-postgres", dir: "adapter-postgres", output: "api/adapter-postgres" },
 ];
 
 const apiDocs = apiPackages.map(({ label, dir, output }) => {
