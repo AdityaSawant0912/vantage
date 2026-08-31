@@ -43,8 +43,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # build first: packages resolve workspace deps via package.json
+      # "exports" pointing at dist/*, so typecheck/test can't resolve
+      # cross-package imports (e.g. adapter-memory -> @usevantage/core)
+      # until dist/ actually exists.
+      - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm build
       - run: pnpm test
       - run: pnpm docs:build
