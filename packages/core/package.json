@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/core",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Vantage core — Handler, processEvent, adapter interfaces, event schema/validation. Zero infra dependencies.",
   "type": "module",
   "sideEffects": false,
@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

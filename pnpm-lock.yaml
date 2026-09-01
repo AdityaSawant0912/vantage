@@ -250,7 +250,7 @@ importers:
         specifier: workspace:*
         version: link:../config
       '@usevantage/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       tsup:
         specifier: ^8.5.0
@@ -278,7 +278,7 @@ importers:
         specifier: workspace:*
         version: link:../config
       '@usevantage/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       tsup:
         specifier: ^8.5.0
@@ -303,7 +303,7 @@ importers:
         specifier: workspace:*
         version: link:../config
       '@usevantage/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       tsup:
         specifier: ^8.5.0
@@ -354,7 +354,7 @@ importers:
         specifier: workspace:*
         version: link:../config
       '@usevantage/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       jsdom:
         specifier: ^25.0.1

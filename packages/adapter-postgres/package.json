@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/adapter-postgres",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Postgres-backed StoreAdapter for @usevantage/core.",
   "type": "module",
   "sideEffects": false,
@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -22,13 +24,13 @@
     "pg": "^8.13.1"
   },
   "peerDependencies": {
-    "@usevantage/core": "workspace:*"
+    "@usevantage/core": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/pg": "^8.11.10",
     "@usevantage/config": "workspace:*",
-    "@usevantage/core": "workspace:*",
+    "@usevantage/core": "workspace:^",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

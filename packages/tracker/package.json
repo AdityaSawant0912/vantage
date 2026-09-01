@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/tracker",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Client-side drop-in analytics script for Vantage.",
   "type": "module",
   "sideEffects": false,
@@ -12,18 +12,23 @@
     },
     "./iife": "./dist/index.global.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "@usevantage/core": "workspace:^"
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@usevantage/adapter-memory": "workspace:*",
     "@usevantage/config": "workspace:*",
-    "@usevantage/core": "workspace:*",
+    "@usevantage/core": "workspace:^",
     "jsdom": "^25.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
