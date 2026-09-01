@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { StoreAdapter } from "../../src/store-adapter.js";
 import type { ScopedEvent, SourceId } from "../../src/source.js";
 
-function eventFor(sourceId: SourceId, url: string): ScopedEvent {
-  return { v: 1, type: "pageview", url, timestamp: Date.now(), sourceId };
+function eventFor(sourceId: SourceId, url: string, props?: ScopedEvent["props"]): ScopedEvent {
+  return { v: 1, type: "pageview", url, timestamp: Date.now(), sourceId, ...(props ? { props } : {}) };
 }
 
 /**
@@ -42,6 +42,16 @@ export function runStoreAdapterContractTests<A extends StoreAdapter>(
       expect(aEvents[0]?.url).toBe("https://a.example/");
       expect(bEvents).toHaveLength(1);
       expect(bEvents[0]?.url).toBe("https://b.example/");
+    });
+
+    it("persists props unchanged", async () => {
+      const adapter = createAdapter();
+      const props = { category: "checkout", value: 42, converted: true, note: null };
+      await adapter.write(eventFor("test-source", "https://example.com/", props));
+
+      const events = await options.readEventsForSource(adapter, "test-source");
+      expect(events).toHaveLength(1);
+      expect(events[0]?.props).toEqual(props);
     });
   });
 }

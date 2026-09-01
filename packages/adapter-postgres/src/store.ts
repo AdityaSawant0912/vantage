@@ -32,6 +32,10 @@ export class PostgresStoreAdapter implements StoreAdapter {
   }
 
   private async migrate(): Promise<void> {
+    // Adding this column to an already-created table (from before `props`
+    // existed) needs a manual `ALTER TABLE ... ADD COLUMN props JSONB` —
+    // CREATE TABLE IF NOT EXISTS only helps on a fresh table, same
+    // limitation as every other column here.
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS ${this.table} (
         id BIGSERIAL PRIMARY KEY,
@@ -41,7 +45,8 @@ export class PostgresStoreAdapter implements StoreAdapter {
         name TEXT,
         url TEXT NOT NULL,
         referrer TEXT,
-        timestamp BIGINT NOT NULL
+        timestamp BIGINT NOT NULL,
+        props JSONB
       )
     `);
   }
@@ -50,8 +55,8 @@ export class PostgresStoreAdapter implements StoreAdapter {
   async write(event: ScopedEvent): Promise<void> {
     await this.ready;
     await this.pool.query(
-      `INSERT INTO ${this.table} (source_id, v, type, name, url, referrer, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [event.sourceId, event.v, event.type, event.name ?? null, event.url, event.referrer ?? null, event.timestamp],
+      `INSERT INTO ${this.table} (source_id, v, type, name, url, referrer, timestamp, props) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [event.sourceId, event.v, event.type, event.name ?? null, event.url, event.referrer ?? null, event.timestamp, event.props ?? null],
     );
   }
 
@@ -66,8 +71,9 @@ export class PostgresStoreAdapter implements StoreAdapter {
       url: string;
       referrer: string | null;
       timestamp: string;
+      props: ScopedEvent["props"] | null;
     }>(
-      `SELECT source_id, v, type, name, url, referrer, timestamp FROM ${this.table} WHERE source_id = $1 ORDER BY id ASC`,
+      `SELECT source_id, v, type, name, url, referrer, timestamp, props FROM ${this.table} WHERE source_id = $1 ORDER BY id ASC`,
       [sourceId],
     );
     return result.rows.map((row) => ({
@@ -78,6 +84,7 @@ export class PostgresStoreAdapter implements StoreAdapter {
       referrer: row.referrer,
       timestamp: Number(row.timestamp),
       sourceId: row.source_id,
+      ...(row.props ? { props: row.props } : {}),
     }));
   }
 

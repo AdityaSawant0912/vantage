@@ -94,6 +94,29 @@ queueAdapter.consume((event) => processEvent(event, storeAdapter));
 
 This split is also the reason `@usevantage/core` has zero infra dependencies: nobody self-hosting a single site pulls in `ioredis` or `pg` just by installing `core`.
 
+## Routing events to different queues by `props`
+
+`VantageEvent.props` is an open bag (`Record<string, string | number | boolean | null>`) for whatever app-defined fields you want — `category`, `action`, `label`, `cookies`, or anything else. It's deliberately not a typed schema addition: adding a new dimension never requires a core change, and every `StoreAdapter` (including `adapter-postgres`'s `props JSONB` column) persists it as-is without needing to know its shape ahead of time.
+
+Because `props` travels on every event, it's also the hook for sending different events to different queues — `createRoutingQueueAdapter` is a `QueueAdapter` that fans out to other `QueueAdapter`s by a resolver function you supply:
+
+```ts
+import { createRoutingQueueAdapter } from "@usevantage/core";
+
+const queueAdapter = createRoutingQueueAdapter({
+  queues: {
+    checkout: checkoutQueueAdapter,
+    marketing: marketingQueueAdapter,
+  },
+  resolve: (event) => String(event.props?.category ?? "default"),
+  default: defaultQueueAdapter, // used when resolve()'s key isn't in `queues`
+});
+
+createHandler({ queueAdapter, resolveSourceId });
+```
+
+`Handler` doesn't change at all — `createRoutingQueueAdapter` returns a plain `QueueAdapter`, so it's wired in exactly where a single one would be. `push()` resolves the target queue and delegates, rejecting (per the same push()-propagates-on-failure rule every adapter follows) if there's no match and no `default`. `consume(handler)` registers the same handler on every underlying queue, so one worker loop still drains all of them.
+
 ## Writing your own adapter
 
 If you need a queue or store that isn't Redis or Postgres, implement `QueueAdapter`/`StoreAdapter` directly — that's the whole point of the split. Two rules make an adapter correct, not just type-correct:

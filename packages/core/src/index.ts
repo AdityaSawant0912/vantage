@@ -1,6 +1,7 @@
 export {
   EVENT_SCHEMA_VERSION,
   validateEvent,
+  type EventProps,
   type EventType,
   type EventValidationResult,
   type VantageEvent,
@@ -10,3 +11,4 @@ export type { QueueAdapter } from "./queue-adapter.js";
 export type { StoreAdapter } from "./store-adapter.js";
 export { createHandler, type HandlerOptions, type IngestRequest, type IngestResult } from "./handler.js";
 export { processEvent } from "./process-event.js";
+export { createRoutingQueueAdapter, type RoutingQueueAdapterOptions } from "./queue-router.js";

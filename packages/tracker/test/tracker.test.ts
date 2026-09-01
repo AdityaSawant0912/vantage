@@ -24,6 +24,25 @@ describe("createTracker", () => {
     expect(body).toMatchObject({ v: 1, type: "pageview", url: "https://example.test/landing" });
   });
 
+  it("attaches props to a custom event when given", () => {
+    const tracker = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
+    fetchMock.mockClear();
+
+    tracker.track("purchase", { category: "checkout", value: 42 });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.props).toEqual({ category: "checkout", value: 42 });
+  });
+
+  it("omits props entirely when not given", () => {
+    createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body).not.toHaveProperty("props");
+  });
+
   it("buffers events until batchSize is reached", () => {
     const tracker = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 3 });
     fetchMock.mockClear();

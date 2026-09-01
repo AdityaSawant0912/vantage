@@ -8,6 +8,16 @@ export const EVENT_SCHEMA_VERSION = 1;
 /** A pageview is a page load; a custom event is anything app-defined via `name`. */
 export type EventType = "pageview" | "custom";
 
+/**
+ * Open extension point for app-defined fields (category, action, label,
+ * cookies, or anything else) — deliberately a flat primitive bag rather
+ * than a typed schema addition, so adding a new dimension never requires
+ * a core change. Values used to route events (e.g. via
+ * `createRoutingQueueAdapter`) must stay primitives so every StoreAdapter
+ * (including adapter-postgres's JSONB column) can persist them as-is.
+ */
+export type EventProps = Record<string, string | number | boolean | null>;
+
 /** The event shape shared by the tracker (what it sends) and Handler.ingest (what it accepts). */
 export interface VantageEvent {
   /** Schema version this event was built against; must equal {@link EVENT_SCHEMA_VERSION}. */
@@ -20,6 +30,8 @@ export interface VantageEvent {
   referrer?: string | null;
   /** Client-supplied epoch ms. */
   timestamp: number;
+  /** App-defined custom fields; see {@link EventProps}. */
+  props?: EventProps;
 }
 
 /** Result of {@link validateEvent}: either the parsed event or the list of shape errors found. */
@@ -56,6 +68,17 @@ export function validateEvent(input: unknown): EventValidationResult {
   }
   if (typeof e.timestamp !== "number" || !Number.isFinite(e.timestamp)) {
     errors.push("timestamp must be a finite number");
+  }
+  if (e.props !== undefined) {
+    if (typeof e.props !== "object" || e.props === null || Array.isArray(e.props)) {
+      errors.push("props must be an object");
+    } else {
+      for (const [key, value] of Object.entries(e.props)) {
+        if (value !== null && !["string", "number", "boolean"].includes(typeof value)) {
+          errors.push(`props.${key} must be a string, number, boolean, or null`);
+        }
+      }
+    }
   }
 
   if (errors.length > 0) return { ok: false, errors };

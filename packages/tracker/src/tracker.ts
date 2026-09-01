@@ -1,4 +1,4 @@
-import type { VantageEvent } from "@usevantage/core";
+import type { EventProps, VantageEvent } from "@usevantage/core";
 
 export interface TrackerOptions {
   /** Collector ingest URL, e.g. "https://analytics.example.com/api/event". */
@@ -12,10 +12,10 @@ export interface TrackerOptions {
 }
 
 export interface Tracker {
-  /** Records a pageview for `url` (default: current page). */
-  trackPageview(url?: string): void;
-  /** Records a custom event with the given name. */
-  track(name: string): void;
+  /** Records a pageview for `url` (default: current page). `props` is app-defined, e.g. for queue routing. */
+  trackPageview(url?: string, props?: EventProps): void;
+  /** Records a custom event with the given name. `props` is app-defined, e.g. for queue routing. */
+  track(name: string, props?: EventProps): void;
   /** Sends any buffered events immediately, bypassing batchSize/flushIntervalMs. */
   flush(): void;
 }
@@ -45,23 +45,25 @@ export function createTracker(options: TrackerOptions): Tracker {
     if (buffer.length >= batchSize) flush(false);
   }
 
-  function trackPageview(url: string = window.location.href): void {
+  function trackPageview(url: string = window.location.href, props?: EventProps): void {
     enqueue({
       v: 1,
       type: "pageview",
       url,
       referrer: document.referrer || null,
       timestamp: Date.now(),
+      ...(props ? { props } : {}),
     });
   }
 
-  function track(name: string): void {
+  function track(name: string, props?: EventProps): void {
     enqueue({
       v: 1,
       type: "custom",
       name,
       url: window.location.href,
       timestamp: Date.now(),
+      ...(props ? { props } : {}),
     });
   }
 

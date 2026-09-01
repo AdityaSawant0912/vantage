@@ -109,6 +109,39 @@ that's the thing actually being deployed.
 
 ---
 
+## 7. Event props & queue routing (added post-Phase 6)
+
+`VantageEvent` gained an optional `props?: Record<string, string | number
+| boolean | null>` field (`EventProps`) as its extension point for
+app-defined custom fields (category, action, label, cookies, or anything
+else a consumer wants). Two alternatives were considered and rejected:
+
+- **TS module augmentation** (consumer declares
+  `interface VantageEvent { category?: string }` in their own app) —
+  rejected because the field would exist only in TypeScript's eyes, not at
+  runtime: `validateEvent` wouldn't check it and `adapter-postgres`'s fixed
+  columns wouldn't persist it. Breaks the "event schema is the single
+  contract" rule in §9.
+- **A generic `VantageEvent<TCustom>`** — rejected as more invasive for no
+  real gain: it would thread a type parameter through `Handler`,
+  `QueueAdapter`, `StoreAdapter`, and the tracker, and `validateEvent`
+  still couldn't runtime-check an unknown `TCustom` shape.
+
+`EVENT_SCHEMA_VERSION` was **not** bumped — `props` is optional and
+additive, so a v1 event without it stays valid.
+
+This also enables routing an event to a different queue by a `props`
+value (e.g. `props.category`). Rather than changing `Handler` — which
+still just calls `queueAdapter.push(event)` — routing is a composed
+`QueueAdapter`: `createRoutingQueueAdapter` (`packages/core/src/queue-router.ts`)
+fans out to other `QueueAdapter`s via a user-supplied `resolve(event)`
+function, with `push()` following the same propagates-on-failure rule as
+every other adapter (rejects if no match and no `default`). It lives in
+`core`, not a new adapter package, since it's composed purely from the
+`QueueAdapter` interface and adds no infra dependency.
+
+---
+
 ## Resolved: what fell short with Optimus
 
 Docs drift — Optimus's API docs were hand-maintained and updated after
