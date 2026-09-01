@@ -23,15 +23,18 @@ export class RedisQueueAdapter implements QueueAdapter {
   private stopped = false;
   private loopPromise: Promise<void> | null = null;
 
+  /** Opens the push-side Redis connection; the consume-side connection is opened lazily by `consume`. */
   constructor(options: RedisQueueAdapterOptions) {
     this.key = options.key ?? "vantage:events";
     this.pushClient = typeof options.redis === "string" ? new Redis(options.redis) : new Redis(options.redis);
   }
 
+  /** LPUSHes the event onto the queue; rejects if the Redis command fails. */
   async push(event: ScopedEvent): Promise<void> {
     await this.pushClient.lpush(this.key, JSON.stringify(event));
   }
 
+  /** Registers the consumer and starts the BRPOP loop on a dedicated connection. */
   consume(handler: (event: ScopedEvent) => Promise<void>): void {
     this.handler = handler;
     this.consumeClient = this.pushClient.duplicate();

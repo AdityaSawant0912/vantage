@@ -20,6 +20,7 @@ export class PostgresStoreAdapter implements StoreAdapter {
   private readonly table: string;
   private readonly ready: Promise<void>;
 
+  /** Validates the table name and opens the pool; the table is created lazily on first write. */
   constructor(options: PostgresStoreAdapterOptions) {
     const table = options.table ?? "vantage_events";
     if (!VALID_TABLE_NAME.test(table)) {
@@ -45,6 +46,7 @@ export class PostgresStoreAdapter implements StoreAdapter {
     `);
   }
 
+  /** Waits for the table to exist, then inserts one row for the event. */
   async write(event: ScopedEvent): Promise<void> {
     await this.ready;
     await this.pool.query(

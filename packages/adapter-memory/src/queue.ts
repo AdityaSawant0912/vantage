@@ -10,11 +10,13 @@ export class MemoryQueueAdapter implements QueueAdapter {
   private handler: ((event: ScopedEvent) => Promise<void>) | null = null;
   private draining = false;
 
+  /** Enqueues an event and schedules a drain; never rejects — nothing can fail to enqueue in-process. */
   async push(event: ScopedEvent): Promise<void> {
     this.queue.push(event);
     void this.drain();
   }
 
+  /** Registers the consumer and drains any events already queued. */
   consume(handler: (event: ScopedEvent) => Promise<void>): void {
     this.handler = handler;
     void this.drain();

@@ -6,6 +6,9 @@ import type { StoreAdapter } from "./store-adapter.js";
  * worker's consume loop (scaled-out). Phase 2 is a straight write —
  * enrichment/session-stitching land here once a real requirement names
  * their shape, not before.
+ *
+ * @param event - Already-scoped event, as produced by Handler/QueueAdapter.
+ * @param storeAdapter - Where the event is persisted.
  */
 export async function processEvent(event: ScopedEvent, storeAdapter: StoreAdapter): Promise<void> {
   await storeAdapter.write(event);

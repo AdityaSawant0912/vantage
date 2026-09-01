@@ -8,6 +8,7 @@ import { createStarlightTypeDocPlugin } from "starlight-typedoc";
 const apiPackages = [
   { label: "@usevantage/core", dir: "core", output: "api/core" },
   { label: "@usevantage/tracker", dir: "tracker", output: "api/tracker" },
+  { label: "@usevantage/adapter-memory", dir: "adapter-memory", output: "api/adapter-memory" },
   { label: "@usevantage/adapter-redis", dir: "adapter-redis", output: "api/adapter-redis" },
   { label: "@usevantage/adapter-postgres", dir: "adapter-postgres", output: "api/adapter-postgres" },
 ];

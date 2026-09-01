@@ -13,5 +13,6 @@ export type SourceId = string;
  * surface instead of a single guarantee.
  */
 export interface ScopedEvent extends VantageEvent {
+  /** Tenant this event belongs to, resolved once by Handler. */
   sourceId: SourceId;
 }

@@ -9,5 +9,6 @@ import type { ScopedEvent } from "./source.js";
  * force every adapter to implement queries nothing calls yet.
  */
 export interface StoreAdapter {
+  /** Persists one already-scoped event. */
   write(event: ScopedEvent): Promise<void>;
 }

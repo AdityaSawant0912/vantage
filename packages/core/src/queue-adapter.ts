@@ -15,6 +15,8 @@ import type { ScopedEvent } from "./source.js";
  * error handling fork depending on which adapter happens to be wired in.
  */
 export interface QueueAdapter {
+  /** Enqueues one already-scoped event. Rejects if it could not be durably enqueued. */
   push(event: ScopedEvent): Promise<void>;
+  /** Registers the consumer and starts the adapter's own consume loop. */
   consume(handler: (event: ScopedEvent) => Promise<void>): void;
 }

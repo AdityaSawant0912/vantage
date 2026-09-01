@@ -3,6 +3,7 @@ import type { VantageEvent } from "@usevantage/core";
 export interface TrackerOptions {
   /** Collector ingest URL, e.g. "https://analytics.example.com/api/event". */
   endpoint: string;
+  /** Sent as a URL query param on every request (see below for why). */
   authKey: string;
   /** Buffered events before an automatic flush. Default 10. */
   batchSize?: number;
@@ -11,8 +12,11 @@ export interface TrackerOptions {
 }
 
 export interface Tracker {
+  /** Records a pageview for `url` (default: current page). */
   trackPageview(url?: string): void;
+  /** Records a custom event with the given name. */
   track(name: string): void;
+  /** Sends any buffered events immediately, bypassing batchSize/flushIntervalMs. */
   flush(): void;
 }
 
@@ -26,6 +30,9 @@ const DEFAULT_FLUSH_INTERVAL_MS = 5000;
  * individually. The auth key travels as a URL query param rather than a
  * header because navigator.sendBeacon can't set custom headers, and both
  * transports need to authenticate the same way.
+ *
+ * @param options - Endpoint, auth key, and batching config.
+ * @returns A {@link Tracker} that has already fired an initial pageview.
  */
 export function createTracker(options: TrackerOptions): Tracker {
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;

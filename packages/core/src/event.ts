@@ -5,19 +5,24 @@
  */
 export const EVENT_SCHEMA_VERSION = 1;
 
+/** A pageview is a page load; a custom event is anything app-defined via `name`. */
 export type EventType = "pageview" | "custom";
 
+/** The event shape shared by the tracker (what it sends) and Handler.ingest (what it accepts). */
 export interface VantageEvent {
+  /** Schema version this event was built against; must equal {@link EVENT_SCHEMA_VERSION}. */
   v: typeof EVENT_SCHEMA_VERSION;
   type: EventType;
   /** Required when type is "custom"; ignored for "pageview". */
   name?: string;
+  /** Page URL the event was fired from. */
   url: string;
   referrer?: string | null;
   /** Client-supplied epoch ms. */
   timestamp: number;
 }
 
+/** Result of {@link validateEvent}: either the parsed event or the list of shape errors found. */
 export type EventValidationResult =
   | { ok: true; event: VantageEvent }
   | { ok: false; errors: string[] };
