@@ -107,6 +107,17 @@ stop** — don't quietly work around it.
   boundaries — this library's value proposition includes a stable,
   type-safe adapter contract, don't undermine it internally.
 
+## Git workflow
+
+- `main` is a **protected branch — no direct commits.** Every change lands
+  via a PR from a feature/topic branch, merged into `main`. Never commit
+  directly to `main`; if you're on `main` with work to save, move it to a
+  branch first.
+- Since `main` accepts no direct pushes, its actual history only advances
+  through PR merges. `apps/docs`/`packages/*` changes still go through the
+  same PR flow as everything else — there's no "docs-only" or "quick fix"
+  exception that commits straight to `main`.
+
 ## Docs stay in sync with the library
 
 - Any change to a published package (`packages/*`) — new export, changed
