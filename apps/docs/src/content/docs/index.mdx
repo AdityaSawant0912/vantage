@@ -3,5 +3,14 @@ title: Vantage
 description: Self-hosted web analytics — pure core + pluggable adapters.
 ---
 
-Vantage is a self-hosted web analytics library and collector. Start with
-the API reference in the sidebar, generated directly from source.
+Vantage is a self-hosted web analytics library and collector. A pure,
+infra-free core validates and processes events behind pluggable
+`QueueAdapter`/`StoreAdapter` interfaces, a client-side tracker sends events
+to it, and separately-published adapter packages (Redis, Postgres) swap in
+real infra without touching your code.
+
+- New here? Start with [Getting Started](/guides/getting-started/) — install, wire up a zero-infra collector, send your first event.
+- Wiring up the client script? See the [Tracker guide](/guides/tracker/).
+- Swapping in real infra, or writing your own adapter? See [Adapters & the interface contract](/guides/adapters/).
+- Deploying for real? See [Best Practices](/guides/best-practices/).
+- Looking for exact signatures? The sidebar's API reference is generated directly from source and always current.
