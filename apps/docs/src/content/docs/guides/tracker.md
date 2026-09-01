@@ -53,6 +53,17 @@ tracker.flush(); // force-send whatever's buffered, don't wait for the interval
 
 `createTracker` fires a pageview automatically on creation — you don't need to call `trackPageview()` yourself on page load. Call it again yourself for SPA route changes, where there's no full page load to trigger it naturally.
 
+## Custom fields with `props`
+
+Both methods take an optional `props` bag for app-defined fields — `category`, `action`, `label`, `cookies`, or anything else — values must be `string | number | boolean | null`:
+
+```ts
+tracker.track("checkout_completed", { category: "checkout", value: 42 });
+tracker.trackPageview(undefined, { experiment: "pricing-v2" });
+```
+
+`props` is also how you drive per-event queue routing on the collector side — see [`createRoutingQueueAdapter`](/guides/adapters/#routing-events-to-different-queues-by-props).
+
 ## How delivery actually works
 
 "Batching" here is client-side buffering and flush *timing*, not a bulk wire format. Each event still validates and posts individually — `VantageEvent` only describes one event, not an array. What batching gets you is fewer network requests: events pile up in memory and go out together when `batchSize` or `flushIntervalMs` is hit, not on every single call to `track()`.

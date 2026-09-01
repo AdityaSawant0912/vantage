@@ -50,4 +50,27 @@ describe("validateEvent", () => {
     const result = validateEvent({ ...basePageview, referrer: null });
     expect(result.ok).toBe(true);
   });
+
+  it("accepts props with string, number, boolean, and null values", () => {
+    const result = validateEvent({ ...basePageview, props: { category: "checkout", value: 42, converted: true, note: null } });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects a non-object props", () => {
+    const result = validateEvent({ ...basePageview, props: "checkout" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toContain("props must be an object");
+  });
+
+  it("rejects an array as props", () => {
+    const result = validateEvent({ ...basePageview, props: ["checkout"] });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toContain("props must be an object");
+  });
+
+  it("rejects a props value that isn't a string, number, boolean, or null", () => {
+    const result = validateEvent({ ...basePageview, props: { nested: { a: 1 } } });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toContain("props.nested must be a string, number, boolean, or null");
+  });
 });
