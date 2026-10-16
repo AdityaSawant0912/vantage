@@ -33,6 +33,10 @@ type IngestResult =
 - **`401`** — `resolveSourceId` returned nothing. Don't retry client-side; it means the key is wrong or revoked.
 - **`500`** — `queueAdapter.push()` rejected. This is the fixed cross-adapter failure mode (see [push() delivery semantics](/guides/adapters/#queueadapter)) — treat it as "the event did not make it onto the queue," full stop, regardless of which adapter is wired in.
 
+## Identify once, keep personal data out of `props`
+
+Call `tracker.identify(userId)` once when a visitor signs in (not on every page) — the collector joins it to earlier and later events by `session_id`/`anon_id`, so repeating it just adds rows. Use an opaque id, never an email or name. The same goes for `props`: it is persisted as-is by every store and can be routed on, so don't put personal data in it. Call `tracker.reset()` on logout. See [Identity & sessions](/guides/identity-and-sessions/).
+
 ## Scaling past one process
 
 The architecture is built so this is a config change, not a rewrite:

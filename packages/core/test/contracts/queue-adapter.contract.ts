@@ -1,13 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { QueueAdapter } from "../../src/queue-adapter.js";
 import type { ScopedEvent } from "../../src/source.js";
 
 const sampleEvent: ScopedEvent = {
-  v: 1,
+  v: 2,
   type: "pageview",
+  event_id: "11111111-1111-4111-8111-111111111111",
+  anon_id: "anon-1",
+  session_id: "sess-1",
   url: "https://example.com/",
   timestamp: Date.now(),
   sourceId: "test-source",
+  receivedAt: Date.now(),
 };
 
 /**
@@ -46,8 +51,8 @@ export function runQueueAdapterContractTests(createAdapter: () => QueueAdapter):
         return Promise.resolve();
       });
 
-      await adapter.push({ ...sampleEvent, url: "https://example.com/a" });
-      await adapter.push({ ...sampleEvent, url: "https://example.com/b" });
+      await adapter.push({ ...sampleEvent, event_id: randomUUID(), url: "https://example.com/a" });
+      await adapter.push({ ...sampleEvent, event_id: randomUUID(), url: "https://example.com/b" });
 
       await vi.waitFor(() => {
         expect(received).toHaveLength(2);

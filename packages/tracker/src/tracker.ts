@@ -9,19 +9,67 @@ export interface TrackerOptions {
   batchSize?: number;
   /** Max time between flushes, ms. Default 5000. */
   flushIntervalMs?: number;
+  /** Fire a pageview when the tracker is created. Default true; set false when a router drives pageviews (e.g. Angular). */
+  autoPageview?: boolean;
+  /** Inactivity before `session_id` rotates, ms. Default 1800000 (30 min). */
+  sessionTimeoutMs?: number;
 }
 
 export interface Tracker {
-  /** Records a pageview for `url` (default: current page). `props` is app-defined, e.g. for queue routing. */
+  /** Records a pageview for `url` (default: current page) and starts a new `pageviewId`. `props` is app-defined, e.g. for queue routing. */
   trackPageview(url?: string, props?: EventProps): void;
-  /** Records a custom event with the given name. `props` is app-defined, e.g. for queue routing. */
+  /** Records a custom event with the given name (lowercase dotted segments, e.g. "item.click"). `props` is app-defined, e.g. for queue routing. */
   track(name: string, props?: EventProps): void;
-  /** Sends any buffered events immediately, bypassing batchSize/flushIntervalMs. */
-  flush(): void;
+  /** Sends one `identify` event linking this visitor to `userId`. Later events are not stamped with it; the collector joins by `session_id`. */
+  identify(userId: string): void;
+  /** For logout: rotates both `session_id` and `anon_id` so the next visitor isn't linked to the previous user. */
+  reset(): void;
+  /** Stops capture and drops buffered events (consent hook). */
+  disable(): void;
+  /** Resumes capture after {@link Tracker.disable}. */
+  enable(): void;
+  /** Sends any buffered events immediately, bypassing batchSize/flushIntervalMs; resolves once every request has settled. */
+  flush(): Promise<void>;
+  /** Id of the current page view (also attached to later events as the `pv_id` prop); undefined before the first pageview. */
+  readonly pageviewId: string | undefined;
 }
 
 const DEFAULT_BATCH_SIZE = 10;
 const DEFAULT_FLUSH_INTERVAL_MS = 5000;
+const DEFAULT_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+const ANON_KEY = "vantage_anon_id";
+const SESSION_KEY = "vantage_session";
+
+function uuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  // Fallback for non-secure contexts (randomUUID is HTTPS-only): RFC 4122 v4 shape from Math.random.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16);
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+/** localStorage with an in-memory fallback — storage can throw (Safari private mode, blocked cookies). */
+function createStorage(): { get(key: string): string | null; set(key: string, value: string): void } {
+  const memory = new Map<string, string>();
+  return {
+    get(key) {
+      try {
+        return window.localStorage.getItem(key) ?? memory.get(key) ?? null;
+      } catch {
+        return memory.get(key) ?? null;
+      }
+    },
+    set(key, value) {
+      memory.set(key, value);
+      try {
+        window.localStorage.setItem(key, value);
+      } catch {
+        // memory copy above is the fallback
+      }
+    },
+  };
+}
 
 /**
  * "Batching" here means client-side buffering and flush timing, not a
@@ -31,73 +79,135 @@ const DEFAULT_FLUSH_INTERVAL_MS = 5000;
  * header because navigator.sendBeacon can't set custom headers, and both
  * transports need to authenticate the same way.
  *
- * @param options - Endpoint, auth key, and batching config.
- * @returns A {@link Tracker} that has already fired an initial pageview.
+ * @param options - Endpoint, auth key, and batching/session config.
+ * @returns A {@link Tracker}; it has already fired an initial pageview unless `autoPageview` is false.
  */
 export function createTracker(options: TrackerOptions): Tracker {
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
   const flushIntervalMs = options.flushIntervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;
+  const sessionTimeoutMs = options.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   const ingestUrl = `${options.endpoint}?key=${encodeURIComponent(options.authKey)}`;
+  const storage = createStorage();
   let buffer: VantageEvent[] = [];
+  let enabled = true;
+  let pageviewId: string | undefined;
+
+  let anonId = storage.get(ANON_KEY) ?? uuid();
+  storage.set(ANON_KEY, anonId);
+
+  let session = readSession();
+
+  function readSession(): { id: string; lastActivity: number } {
+    try {
+      const parsed = JSON.parse(storage.get(SESSION_KEY) ?? "null") as { id?: unknown; lastActivity?: unknown } | null;
+      if (parsed && typeof parsed.id === "string" && typeof parsed.lastActivity === "number") {
+        return { id: parsed.id, lastActivity: parsed.lastActivity };
+      }
+    } catch {
+      // corrupt value — start a fresh session
+    }
+    return { id: uuid(), lastActivity: Date.now() };
+  }
+
+  /** Returns the live session id, rotating it first if the visitor was inactive past the timeout. */
+  function touchSession(now: number): string {
+    if (now - session.lastActivity > sessionTimeoutMs) session = { id: uuid(), lastActivity: now };
+    session.lastActivity = now;
+    storage.set(SESSION_KEY, JSON.stringify(session));
+    return session.id;
+  }
+
+  function base(type: VantageEvent["type"], url: string, props?: EventProps): VantageEvent {
+    const now = Date.now();
+    const merged: EventProps = { ...(pageviewId ? { pv_id: pageviewId } : {}), ...props };
+    return {
+      v: 2,
+      type,
+      event_id: uuid(),
+      anon_id: anonId,
+      session_id: touchSession(now),
+      url,
+      timestamp: now,
+      ...(Object.keys(merged).length > 0 ? { props: merged } : {}),
+    };
+  }
 
   function enqueue(event: VantageEvent): void {
+    if (!enabled) return;
     buffer.push(event);
-    if (buffer.length >= batchSize) flush(false);
+    // A hidden page may be unloaded at any moment, so don't wait for the batch to fill.
+    if (document.visibilityState === "hidden") void flush(true);
+    else if (buffer.length >= batchSize) void flush(false);
   }
 
   function trackPageview(url: string = window.location.href, props?: EventProps): void {
-    enqueue({
-      v: 1,
-      type: "pageview",
-      url,
-      referrer: document.referrer || null,
-      timestamp: Date.now(),
-      ...(props ? { props } : {}),
-    });
+    pageviewId = uuid();
+    enqueue({ ...base("pageview", url, props), referrer: document.referrer || null });
   }
 
   function track(name: string, props?: EventProps): void {
-    enqueue({
-      v: 1,
-      type: "custom",
-      name,
-      url: window.location.href,
-      timestamp: Date.now(),
-      ...(props ? { props } : {}),
-    });
+    enqueue({ ...base("custom", window.location.href, props), name });
   }
 
-  function send(event: VantageEvent, useBeacon: boolean): void {
+  function identify(userId: string): void {
+    enqueue({ ...base("identify", window.location.href), user_id: userId });
+  }
+
+  function send(event: VantageEvent, useBeacon: boolean): Promise<void> {
     const body = JSON.stringify(event);
     if (useBeacon && navigator.sendBeacon) {
       navigator.sendBeacon(ingestUrl, body);
-      return;
+      return Promise.resolve();
     }
-    fetch(ingestUrl, {
+    return fetch(ingestUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
       keepalive: true,
-    }).catch(() => {
-      // ponytail: delivery from the browser is best-effort, not retried
-      // client-side. Add retry/localStorage buffering if field drop rate
-      // turns out to matter.
-    });
+    }).then(
+      () => undefined,
+      () => {
+        // ponytail: delivery from the browser is best-effort, not retried
+        // client-side. event_id makes a future retry queue safe to add.
+      },
+    );
   }
 
-  function flush(useBeacon: boolean): void {
-    if (buffer.length === 0) return;
+  function flush(useBeacon: boolean): Promise<void> {
+    if (buffer.length === 0) return Promise.resolve();
     const events = buffer;
     buffer = [];
-    for (const event of events) send(event, useBeacon);
+    return Promise.all(events.map((event) => send(event, useBeacon))).then(() => undefined);
   }
 
-  setInterval(() => flush(false), flushIntervalMs);
+  setInterval(() => void flush(false), flushIntervalMs);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flush(true);
+    if (document.visibilityState === "hidden") void flush(true);
   });
 
-  trackPageview();
+  if (options.autoPageview ?? true) trackPageview();
 
-  return { trackPageview, track, flush: () => flush(false) };
+  return {
+    trackPageview,
+    track,
+    identify,
+    reset() {
+      anonId = uuid();
+      storage.set(ANON_KEY, anonId);
+      session = { id: uuid(), lastActivity: Date.now() };
+      storage.set(SESSION_KEY, JSON.stringify(session));
+      pageviewId = undefined;
+    },
+    disable() {
+      enabled = false;
+      buffer = [];
+    },
+    enable() {
+      enabled = true;
+    },
+    flush: () => flush(false),
+    get pageviewId() {
+      return pageviewId;
+    },
+  };
 }

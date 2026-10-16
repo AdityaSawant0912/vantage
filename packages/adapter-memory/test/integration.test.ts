@@ -16,7 +16,7 @@ describe("in-memory end-to-end path", () => {
 
     const result = await handler.ingest({
       authKey: "test-key",
-      body: { v: 1, type: "pageview", url: "https://example.com/", timestamp: Date.now() },
+      body: { v: 2, type: "pageview", event_id: "11111111-1111-4111-8111-111111111111", anon_id: "anon-1", session_id: "sess-1", url: "https://example.com/", timestamp: Date.now() },
     });
 
     expect(result).toEqual({ status: 202 });
@@ -35,7 +35,7 @@ describe("in-memory end-to-end path", () => {
     const handler = createHandler({ queueAdapter, resolveSourceId: () => null });
     const result = await handler.ingest({
       authKey: "unknown",
-      body: { v: 1, type: "pageview", url: "https://example.com/", timestamp: Date.now() },
+      body: { v: 2, type: "pageview", event_id: "11111111-1111-4111-8111-111111111111", anon_id: "anon-1", session_id: "sess-1", url: "https://example.com/", timestamp: Date.now() },
     });
 
     expect(result).toEqual({ status: 401 });

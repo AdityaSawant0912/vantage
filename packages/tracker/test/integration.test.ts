@@ -19,7 +19,8 @@ describe("tracker -> local collector", () => {
       expect(collector?.store.getEvents()).toHaveLength(1);
     });
     const [event] = collector.store.getEvents();
-    expect(event).toMatchObject({ type: "pageview", sourceId: "source-1" });
+    expect(event).toMatchObject({ v: 2, type: "pageview", sourceId: "source-1" })
+    expect(event?.receivedAt).toBeGreaterThan(0);
   });
 
   it("does not reach the store for an unknown auth key", async () => {

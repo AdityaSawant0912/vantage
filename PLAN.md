@@ -142,6 +142,28 @@ every other adapter (rejects if no match and no `default`). It lives in
 
 ---
 
+## 8. Schema v2 for SK Analytics (added post-1.0.0)
+
+Spec: `Vantage Changes for SK Analytics (schema v2).md`. Shipped as a clean
+major bump (no deployments to migrate). Decisions:
+
+- `EVENT_SCHEMA_VERSION` is now 2. `event_id` (UUID, the idempotency key),
+  `anon_id` and `session_id` are core fields; `type` gains `identify`
+  (carries `user_id`); custom `name` is lowercase dotted segments. App
+  dimensions stay in the flat `props` bag, now size-limited (`EVENT_LIMITS`).
+- `Handler.ingest` stamps `receivedAt` on `ScopedEvent` and enforces an 8 KB
+  limit on the *parsed* body (a raw-bytes cap is the transport's job).
+  Tenant scoping still lives only in `resolveSourceId`; no enrichment hook.
+- `StoreAdapter.write` is idempotent by `event_id`, **scoped per source**
+  (`UNIQUE (source_id, event_id)` in Postgres) so one tenant can't suppress
+  another's event by replaying its id. The shared store contract gained
+  duplicate-write and identify/id-persistence tests.
+- `reset()` rotates both `anon_id` and `session_id`.
+- Still to ship: BullMQ queue adapter, visibility/item tracker modules
+  (`@usevantage/tracker/visibility`, `/items`), optional persisted retry queue.
+
+---
+
 ## Resolved: what fell short with Optimus
 
 Docs drift — Optimus's API docs were hand-maintained and updated after

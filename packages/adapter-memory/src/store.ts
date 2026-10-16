@@ -7,9 +7,13 @@ import type { ScopedEvent, SourceId, StoreAdapter } from "@usevantage/core";
  */
 export class MemoryStoreAdapter implements StoreAdapter {
   private events: ScopedEvent[] = [];
+  private seen = new Set<string>();
 
-  /** Appends the event to the in-memory list. */
+  /** Appends the event unless this source has already stored its `event_id` (idempotent). */
   async write(event: ScopedEvent): Promise<void> {
+    const key = `${event.sourceId}:${event.event_id}`;
+    if (this.seen.has(key)) return;
+    this.seen.add(key);
     this.events.push(event);
   }
 

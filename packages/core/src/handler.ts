@@ -1,6 +1,16 @@
-import { validateEvent } from "./event.js";
+import { EVENT_LIMITS, validateEvent } from "./event.js";
 import type { QueueAdapter } from "./queue-adapter.js";
 import type { SourceId } from "./source.js";
+
+/** UTF-8 byte length without TextEncoder/Buffer, which core's lib config doesn't include. */
+function utf8ByteLength(s: string): number {
+  let bytes = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    bytes += cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+  }
+  return bytes;
+}
 
 /** Input to {@link createHandler}'s `ingest`, transport-agnostic. */
 export interface IngestRequest {
@@ -43,11 +53,17 @@ export function createHandler(options: HandlerOptions): { ingest(request: Ingest
       const sourceId = await options.resolveSourceId(request.authKey);
       if (!sourceId) return { status: 401 };
 
+      // Measured on the parsed body; a raw-bytes cap before JSON.parse is the transport's job.
+      const bodyBytes = utf8ByteLength(JSON.stringify(request.body) ?? "");
+      if (bodyBytes > EVENT_LIMITS.maxBodyBytes) {
+        return { status: 400, errors: [`body exceeds ${EVENT_LIMITS.maxBodyBytes} bytes`] };
+      }
+
       const result = validateEvent(request.body);
       if (!result.ok) return { status: 400, errors: result.errors };
 
       try {
-        await options.queueAdapter.push({ ...result.event, sourceId });
+        await options.queueAdapter.push({ ...result.event, sourceId, receivedAt: Date.now() });
         return { status: 202 };
       } catch (err) {
         return { status: 500, error: err instanceof Error ? err.message : String(err) };

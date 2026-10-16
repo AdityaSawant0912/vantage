@@ -32,31 +32,54 @@ export class PostgresStoreAdapter implements StoreAdapter {
   }
 
   private async migrate(): Promise<void> {
-    // Adding this column to an already-created table (from before `props`
-    // existed) needs a manual `ALTER TABLE ... ADD COLUMN props JSONB` —
-    // CREATE TABLE IF NOT EXISTS only helps on a fresh table, same
-    // limitation as every other column here.
+    // CREATE TABLE IF NOT EXISTS never alters an existing table, so a table
+    // created under schema v1 must be dropped and recreated (schema v2 has no
+    // data migration). Idempotency is unique per (source_id, event_id), not
+    // event_id alone, so one tenant can't suppress another's event by
+    // replaying its id.
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS ${this.table} (
         id BIGSERIAL PRIMARY KEY,
         source_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
         v INTEGER NOT NULL,
         type TEXT NOT NULL,
+        anon_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        user_id TEXT,
         name TEXT,
         url TEXT NOT NULL,
         referrer TEXT,
         timestamp BIGINT NOT NULL,
-        props JSONB
+        received_at BIGINT NOT NULL,
+        props JSONB,
+        UNIQUE (source_id, event_id)
       )
     `);
   }
 
-  /** Waits for the table to exist, then inserts one row for the event. */
+  /** Waits for the table to exist, then inserts one row; a repeated (source, event_id) is a no-op. */
   async write(event: ScopedEvent): Promise<void> {
     await this.ready;
     await this.pool.query(
-      `INSERT INTO ${this.table} (source_id, v, type, name, url, referrer, timestamp, props) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [event.sourceId, event.v, event.type, event.name ?? null, event.url, event.referrer ?? null, event.timestamp, event.props ?? null],
+      `INSERT INTO ${this.table} (source_id, event_id, v, type, anon_id, session_id, user_id, name, url, referrer, timestamp, received_at, props)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (source_id, event_id) DO NOTHING`,
+      [
+        event.sourceId,
+        event.event_id,
+        event.v,
+        event.type,
+        event.anon_id,
+        event.session_id,
+        event.user_id ?? null,
+        event.name ?? null,
+        event.url,
+        event.referrer ?? null,
+        event.timestamp,
+        event.receivedAt,
+        event.props ?? null,
+      ],
     );
   }
 
@@ -65,25 +88,35 @@ export class PostgresStoreAdapter implements StoreAdapter {
     await this.ready;
     const result = await this.pool.query<{
       source_id: string;
+      event_id: string;
       v: number;
-      type: "pageview" | "custom";
+      type: ScopedEvent["type"];
+      anon_id: string;
+      session_id: string;
+      user_id: string | null;
       name: string | null;
       url: string;
       referrer: string | null;
       timestamp: string;
+      received_at: string;
       props: ScopedEvent["props"] | null;
     }>(
-      `SELECT source_id, v, type, name, url, referrer, timestamp, props FROM ${this.table} WHERE source_id = $1 ORDER BY id ASC`,
+      `SELECT source_id, event_id, v, type, anon_id, session_id, user_id, name, url, referrer, timestamp, received_at, props FROM ${this.table} WHERE source_id = $1 ORDER BY id ASC`,
       [sourceId],
     );
     return result.rows.map((row) => ({
-      v: row.v as 1,
+      v: row.v as 2,
       type: row.type,
+      event_id: row.event_id,
+      anon_id: row.anon_id,
+      session_id: row.session_id,
+      ...(row.user_id !== null ? { user_id: row.user_id } : {}),
       name: row.name ?? undefined,
       url: row.url,
       referrer: row.referrer,
       timestamp: Number(row.timestamp),
       sourceId: row.source_id,
+      receivedAt: Number(row.received_at),
       ...(row.props ? { props: row.props } : {}),
     }));
   }

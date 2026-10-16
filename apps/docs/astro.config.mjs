@@ -11,6 +11,7 @@ const apiPackages = [
   { label: "@usevantage/adapter-memory", dir: "adapter-memory", output: "api/adapter-memory" },
   { label: "@usevantage/adapter-redis", dir: "adapter-redis", output: "api/adapter-redis" },
   { label: "@usevantage/adapter-postgres", dir: "adapter-postgres", output: "api/adapter-postgres" },
+  { label: "@usevantage/adapter-bullmq", dir: "adapter-bullmq", output: "api/adapter-bullmq" },
 ];
 
 const apiDocs = apiPackages.map(({ label, dir, output }) => {
