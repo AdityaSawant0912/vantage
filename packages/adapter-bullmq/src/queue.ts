@@ -1,4 +1,4 @@
-import { Worker, type ConnectionOptions, type Queue } from "bullmq";
+import { Worker, type ConnectionOptions, type Queue, type WorkerOptions } from "bullmq";
 import type { QueueAdapter, ScopedEvent } from "@usevantage/core";
 
 export interface BullMQQueueAdapterOptions {
@@ -12,6 +12,12 @@ export interface BullMQQueueAdapterOptions {
   connection: ConnectionOptions;
   /** Jobs processed in parallel by `consume`. Default 10. */
   concurrency?: number;
+  /**
+   * Extra BullMQ Worker settings, e.g. `lockDuration` and `stalledInterval`, which decide how
+   * quickly a job held by a crashed worker is handed to another one (BullMQ defaults: 30s each).
+   * `connection` and `concurrency` are set by the adapter and can't be overridden here.
+   */
+  workerOptions?: Omit<WorkerOptions, "connection" | "concurrency">;
 }
 
 const JOB_NAME = "event";
@@ -30,6 +36,7 @@ export class BullMQQueueAdapter implements QueueAdapter {
   private readonly queue: Queue;
   private readonly connection: ConnectionOptions;
   private readonly concurrency: number;
+  private readonly workerOptions: BullMQQueueAdapterOptions["workerOptions"];
   private worker: Worker | null = null;
 
   /** Stores the caller-supplied queue and worker connection; opens nothing until `consume`. */
@@ -37,6 +44,7 @@ export class BullMQQueueAdapter implements QueueAdapter {
     this.queue = options.queue;
     this.connection = options.connection;
     this.concurrency = options.concurrency ?? 10;
+    this.workerOptions = options.workerOptions;
   }
 
   /** Adds the event as a job; rejects if BullMQ/Redis fails to enqueue it. */
@@ -58,6 +66,7 @@ export class BullMQQueueAdapter implements QueueAdapter {
         ? this.connection
         : { ...(this.connection as object), maxRetriesPerRequest: null };
     this.worker = new Worker<ScopedEvent>(this.queue.name, (job) => handler(job.data), {
+      ...this.workerOptions,
       connection,
       concurrency: this.concurrency,
     });
