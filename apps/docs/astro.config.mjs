@@ -7,19 +7,20 @@ import { createStarlightTypeDocPlugin } from "starlight-typedoc";
 // reusing it across packages would collide their reflection sets.
 const apiPackages = [
   { label: "@usevantage/core", dir: "core", output: "api/core" },
-  { label: "@usevantage/tracker", dir: "tracker", output: "api/tracker" },
+  // `entries` lists extra subpath entry points (e.g. `@usevantage/tracker/items`) documented alongside `index`.
+  { label: "@usevantage/tracker", dir: "tracker", output: "api/tracker", entries: ["index", "visibility", "items"] },
   { label: "@usevantage/adapter-memory", dir: "adapter-memory", output: "api/adapter-memory" },
   { label: "@usevantage/adapter-redis", dir: "adapter-redis", output: "api/adapter-redis" },
   { label: "@usevantage/adapter-postgres", dir: "adapter-postgres", output: "api/adapter-postgres" },
   { label: "@usevantage/adapter-bullmq", dir: "adapter-bullmq", output: "api/adapter-bullmq" },
 ];
 
-const apiDocs = apiPackages.map(({ label, dir, output }) => {
+const apiDocs = apiPackages.map(({ label, dir, output, entries = ["index"] }) => {
   const [plugin, sidebarGroup] = createStarlightTypeDocPlugin();
   return {
     sidebarGroup,
     plugin: plugin({
-      entryPoints: [`../../packages/${dir}/src/index.ts`],
+      entryPoints: entries.map((entry) => `../../packages/${dir}/src/${entry}.ts`),
       // A dedicated docs tsconfig (src only, no test/) — TypeDoc type-checks
       // the whole program a tsconfig resolves, not just entryPoints, so
       // pointing it at the package's real tsconfig.json (include: src+test)

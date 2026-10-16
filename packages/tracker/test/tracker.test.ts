@@ -226,4 +226,18 @@ describe("createTracker", () => {
     await expect(tracker.flush()).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("calls onBeforePageview listeners before pageviewId changes, until unsubscribed", () => {
+    const tracker = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1, autoPageview: false });
+    const seen: Array<string | undefined> = [];
+    const off = tracker.onBeforePageview(() => seen.push(tracker.pageviewId));
+
+    tracker.trackPageview();
+    const first = tracker.pageviewId;
+    tracker.trackPageview();
+    off();
+    tracker.trackPageview();
+
+    expect(seen).toEqual([undefined, first]);
+  });
 });
