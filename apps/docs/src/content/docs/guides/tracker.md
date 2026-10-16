@@ -40,6 +40,7 @@ Or drop the IIFE build straight into HTML — no bundler needed. It exposes a `V
 | `flushIntervalMs`  | no       | `5000`  | Max time between flushes, regardless of buffer size.                  |
 | `autoPageview`     | no       | `true`  | Fire a pageview on creation. Set `false` when a router drives pageviews (e.g. Angular). |
 | `sessionTimeoutMs` | no       | `1800000` | Inactivity before `session_id` rotates. See [Identity & sessions](/guides/identity-and-sessions/). |
+| `persistQueue`     | no       | `false` | Keep unsent events in `localStorage` and retry them on the next page load. See [Delivery](#how-delivery-actually-works). |
 
 ## Tracking events
 
@@ -172,7 +173,24 @@ Two delivery paths:
 - **Normal flush** (interval elapsed, or `batchSize` reached, or `flush()` called): `fetch` with `keepalive: true`.
 - **Tab hidden** (`visibilitychange` → `hidden`, e.g. closing or backgrounding the tab): `navigator.sendBeacon`, which survives page unload in a way a normal `fetch` might not. Events tracked while the page is already hidden skip the buffer and go out immediately the same way.
 
-Delivery is best-effort. A failed `fetch` is swallowed, not retried — the tracker doesn't buffer to `localStorage` and retry on the next page load (every event has a unique `event_id`, so stores can safely dedupe if retries are added later). If you're seeing meaningful event loss in the field, that's the first place to extend, not a sign something's broken.
+By default delivery is best-effort: a failed `fetch` is swallowed and not retried. If you're seeing meaningful event loss in the field, turn on `persistQueue`.
+
+### `persistQueue`
+
+```ts
+createTracker({ endpoint, authKey, persistQueue: true });
+```
+
+Every event is written to `localStorage` (`vantage_queue`) when it is tracked and removed once delivery is settled. On the next page load the tracker resends whatever is still there.
+
+- **Removed:** the collector answered `2xx`, or `4xx` (a bad key or invalid event will never succeed, so retrying is pointless), or the browser accepted a `sendBeacon`.
+- **Kept:** a network error or a `5xx`, or a `sendBeacon` the browser refused.
+- **Capped at 200 events**; the oldest are dropped first.
+- **Retries happen on the next load only** — there is no in-page retry timer. A visitor who never comes back never delivers.
+- **Safe to resend:** every event keeps its `event_id`, and stores are [idempotent by `event_id`](/guides/adapters/#storeadapter), so a resend that did arrive the first time doesn't duplicate. A `sendBeacon` that the browser queued but the network dropped is the one case this can't recover, because the browser doesn't report the outcome.
+- **Consent:** `disable()` also clears the persisted queue, so events captured before consent was withdrawn are never sent later.
+- Events keep the `timestamp` they were captured with, so late arrivals are still placed at the right time; use `receivedAt` to see when the collector got them.
+- If `localStorage` is blocked, the queue falls back to memory and is lost with the page, like everything else the tracker stores.
 
 ## Custom events need a name
 
