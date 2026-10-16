@@ -122,6 +122,8 @@ queueAdapter.consume((event) => processEvent(event, storeAdapter));
 
 Delivery is **at-least-once**: a retry can run a handler twice for the same event. Jobs are keyed `sourceId|event_id`, so pushing the same event twice while it's still pending doesn't duplicate it — but that only holds while the job exists, so the `StoreAdapter` being [idempotent by `event_id`](#storeadapter) is what actually prevents duplicate rows. `close()` stops the worker; closing your `Queue` is up to you.
 
+**Crashed workers.** If a worker process dies mid-job, BullMQ notices the expired lock and hands the job to another worker. That takes up to `lockDuration + stalledInterval` — 30s each by default, so up to a minute. Tune it with `workerOptions` (`new BullMQQueueAdapter({ ..., workerOptions: { lockDuration: 10_000, stalledInterval: 5_000 } })`); a shorter lock means more renewal traffic and a slow handler can be mistaken for a dead one. This path doesn't use up the job's 5 attempts, and because the dead worker may already have written the event, the idempotent store is what keeps it to one row. The repo's `examples/bullmq-e2e` kills a real worker in both situations (before and after the write) and checks the retry and the single row.
+
 ## Routing events to different queues by `props`
 
 `VantageEvent.props` is an open bag (`Record<string, string | number | boolean | null>`) for whatever app-defined fields you want — `category`, `action`, `label`, `cookies`, or anything else. It's deliberately not a typed schema addition: adding a new dimension never requires a core change, and every `StoreAdapter` (including `adapter-postgres`'s `props JSONB` column) persists it as-is without needing to know its shape ahead of time.
