@@ -3,4 +3,5 @@ packages:
   - "apps/*"
 allowBuilds:
   esbuild: true
+  msgpackr-extract: false # optional native speedup for bullmq; pure-JS fallback is fine
   sharp: true

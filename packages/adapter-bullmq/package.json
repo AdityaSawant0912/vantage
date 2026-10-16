@@ -1,0 +1,36 @@
+{
+  "name": "@usevantage/adapter-bullmq",
+  "version": "1.0.0",
+  "description": "BullMQ-backed QueueAdapter for @usevantage/core — retries, backoff, and event_id-keyed jobs.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@usevantage/core": "workspace:^",
+    "bullmq": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@usevantage/config": "workspace:*",
+    "@usevantage/core": "workspace:^",
+    "bullmq": "^5.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
