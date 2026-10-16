@@ -13,6 +13,12 @@ export interface TrackerOptions {
   autoPageview?: boolean;
   /** Inactivity before `session_id` rotates, ms. Default 1800000 (30 min). */
   sessionTimeoutMs?: number;
+  /**
+   * Keep unsent events in localStorage (newest 200; oldest dropped) and retry them on the
+   * next page load. An event leaves the queue once the collector answers 2xx or 4xx (a 4xx
+   * will never succeed); network errors and 5xx keep it. Default false.
+   */
+  persistQueue?: boolean;
 }
 
 export interface Tracker {
@@ -45,6 +51,8 @@ const DEFAULT_FLUSH_INTERVAL_MS = 5000;
 const DEFAULT_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const ANON_KEY = "vantage_anon_id";
 const SESSION_KEY = "vantage_session";
+const QUEUE_KEY = "vantage_queue";
+const MAX_PERSISTED = 200;
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -94,6 +102,7 @@ export function createTracker(options: TrackerOptions): Tracker {
   const sessionTimeoutMs = options.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   const ingestUrl = `${options.endpoint}?key=${encodeURIComponent(options.authKey)}`;
   const storage = createStorage();
+  const persist = options.persistQueue ?? false;
   let buffer: VantageEvent[] = [];
   let enabled = true;
   let pageviewId: string | undefined;
@@ -139,8 +148,33 @@ export function createTracker(options: TrackerOptions): Tracker {
     };
   }
 
+  // ponytail: whole-list read-modify-write on every change (<= 200 small events), and two tabs
+  // can race on it. Both are harmless: a lost entry is lost best-effort delivery, and
+  // event_id makes any resend a no-op. Add per-event keys if that ever matters.
+  function readQueue(): VantageEvent[] {
+    try {
+      const parsed: unknown = JSON.parse(storage.get(QUEUE_KEY) ?? "[]");
+      return Array.isArray(parsed) ? (parsed as VantageEvent[]).filter((e) => typeof e === "object" && e !== null) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeQueue(events: VantageEvent[]): void {
+    storage.set(QUEUE_KEY, JSON.stringify(events.slice(-MAX_PERSISTED)));
+  }
+
+  function remember(event: VantageEvent): void {
+    if (persist) writeQueue([...readQueue(), event]);
+  }
+
+  function forget(event: VantageEvent): void {
+    if (persist) writeQueue(readQueue().filter((e) => e.event_id !== event.event_id));
+  }
+
   function enqueue(event: VantageEvent): void {
     if (!enabled) return;
+    remember(event);
     buffer.push(event);
     // A hidden page may be unloaded at any moment, so don't wait for the batch to fill.
     if (document.visibilityState === "hidden") void flush(true);
@@ -164,7 +198,9 @@ export function createTracker(options: TrackerOptions): Tracker {
   function send(event: VantageEvent, useBeacon: boolean): Promise<void> {
     const body = JSON.stringify(event);
     if (useBeacon && navigator.sendBeacon) {
-      navigator.sendBeacon(ingestUrl, body);
+      // The browser reports only whether it queued the beacon, not whether the
+      // collector accepted it; `false` (over the size limit etc.) stays persisted.
+      if (navigator.sendBeacon(ingestUrl, body)) forget(event);
       return Promise.resolve();
     }
     return fetch(ingestUrl, {
@@ -173,10 +209,12 @@ export function createTracker(options: TrackerOptions): Tracker {
       body,
       keepalive: true,
     }).then(
-      () => undefined,
+      (res) => {
+        // 4xx will never succeed on retry (bad key, invalid event), so don't keep it.
+        if (res.status < 500) forget(event);
+      },
       () => {
-        // ponytail: delivery from the browser is best-effort, not retried
-        // client-side. event_id makes a future retry queue safe to add.
+        // Network error: stays persisted when persistQueue is on, otherwise best-effort.
       },
     );
   }
@@ -192,6 +230,9 @@ export function createTracker(options: TrackerOptions): Tracker {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") void flush(true);
   });
+
+  // Resend what an earlier page load couldn't deliver; the collector dedupes by event_id.
+  if (persist) for (const event of readQueue()) void send(event, false);
 
   if (options.autoPageview ?? true) trackPageview();
 
@@ -213,6 +254,7 @@ export function createTracker(options: TrackerOptions): Tracker {
     disable() {
       enabled = false;
       buffer = [];
+      if (persist) writeQueue([]); // withdrawn consent: nothing may be sent later
     },
     enable() {
       enabled = true;
