@@ -70,6 +70,86 @@ tracker.enable();
 
 See [Identity & sessions](/guides/identity-and-sessions/) for how the ids work.
 
+## Impressions, visible time and clicks (optional modules)
+
+Two opt-in subpath exports sit beside the core tracker; the drop-in IIFE build does not include them.
+
+### `@usevantage/tracker/visibility`
+
+A low-level wrapper around `IntersectionObserver` that measures how long each element is visible. It sends no events and doesn't depend on the tracker, so you can use it on its own.
+
+```ts
+import { createVisibilityObserver } from "@usevantage/tracker/visibility";
+
+const vis = createVisibilityObserver({
+  idleMs: 30000,
+  onEnd: (m, reason) => {
+    // m: { el, key, firstSeenAt, visibleMs, maxVisiblePct }
+    // reason: "stopped" | "hidden" | "manual"
+  },
+});
+
+const stop = vis.observe(el, { key: "post:665f" });
+stop(); // ends this element's measurement
+vis.endAll("manual"); // ends every open measurement, e.g. on a page change
+```
+
+- One shared `IntersectionObserver` per instance (thresholds `0, 0.25, 0.5, 0.75, 1`).
+- Time accrues only while the element intersects **and** the page is visible, the window is focused, and the last input (pointer, key, wheel, touch, scroll) was within `idleMs`. Scroll-backs add up within one measurement.
+- A measurement ends on `stop()`, on `endAll()`, or when the page hides. After `endAll("manual")` or a hide/show cycle, an element still on screen starts a fresh measurement.
+- An element that was never seen never fires `onEnd`.
+- Without `IntersectionObserver`, `isSupported()` is `false`, `observe` returns a no-op `stop`, and `onEnd` never fires.
+- `createActivityClock({ idleMs })` exposes the active-time clock on its own; pass one to several observers through `deps.clock` to share it. `deps` also accepts `IntersectionObserver` and `now`, which keeps tests deterministic.
+
+### `@usevantage/tracker/items`
+
+Builds on the visibility module and a tracker to emit three events, with no framework dependency:
+
+```ts
+import { createItemTracker } from "@usevantage/tracker/items";
+
+const items = createItemTracker(tracker, { idleMs: 30000 });
+
+const stop = items.observe(el, {
+  itemType: "post", itemId: "665f", placement: "feed", feed: "news", position: 7,
+});
+items.trackClicks(document.body); // delegated: reads data-vantage-type / -id / -action
+stop(); // emits this element's impression and flushes
+```
+
+| Event | When | Props |
+| --- | --- | --- |
+| `item.impression` | `stop()`, the page view changes, or the page hides | `item_type`, `item_id`, `placement`, `feed`, `position`, `first_seen_at`, `visible_ms`, `max_visible_pct`, `end_reason` |
+| `item.click` | a click inside an element with `data-vantage-type` and `data-vantage-id` | `item_type`, `item_id`, `action` (from `data-vantage-action`) |
+| `page.leave` | the page view changes or the page hides (or `items.endPage()`) | `active_ms`, `max_scroll_pct`, `exit_kind` (`navigation`, `hidden` or `manual`) |
+
+Values are raw measurements: whether an impression counts as "viewable" is decided where you read the data, not in the browser. Each event is one flat row, one event per item, so `props` stays within its limits.
+
+The module listens for `tracker.trackPageview()` (through `tracker.onBeforePageview`) so impressions and `page.leave` are stamped with the page view they belong to. In a SPA, call `stop()` for the old page's elements **before** `trackPageview()` — otherwise the element's measurement has already restarted for the new page and emits a near-empty impression against it. If your router changes pages without calling `trackPageview`, call `items.endPage()` yourself. `page.leave` also fires each time the tab is hidden, not only on close, so expect more than one per page view.
+
+#### Recipe: Angular directive
+
+Framework wrappers aren't shipped; this is the whole thing for Angular:
+
+```ts
+@Directive({ selector: "[skTrackItem]", standalone: true })
+export class TrackItemDirective implements OnInit, OnDestroy {
+  @Input({ required: true }) skTrackItem!: ItemMeta;
+  private stop?: () => void;
+
+  constructor(private el: ElementRef<HTMLElement>, private items: ItemTracker) {} // provide ItemTracker from createItemTracker(tracker)
+
+  ngOnInit() { this.stop = this.items.observe(this.el.nativeElement, this.skTrackItem); }
+  ngOnDestroy() { this.stop?.(); }
+}
+```
+
+```html
+<article [skTrackItem]="{ itemType: 'post', itemId: post.id, feed: 'news', position: i }">…</article>
+```
+
+Create the tracker with `autoPageview: false` and call `trackPageview()` from the router's `NavigationEnd`; destroyed components call `stop()` first, so the order above holds.
+
 ## Custom fields with `props`
 
 Both methods take an optional `props` bag for app-defined fields — `category`, `action`, `label`, `cookies`, or anything else — values must be `string | number | boolean | null`:

@@ -10,6 +10,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./visibility": {
+      "types": "./dist/visibility.d.ts",
+      "import": "./dist/visibility.js"
+    },
+    "./items": {
+      "types": "./dist/items.d.ts",
+      "import": "./dist/items.js"
+    },
     "./iife": "./dist/index.global.js"
   },
   "files": [

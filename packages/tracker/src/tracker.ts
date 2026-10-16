@@ -24,6 +24,12 @@ export interface Tracker {
   identify(userId: string): void;
   /** For logout: rotates both `session_id` and `anon_id` so the next visitor isn't linked to the previous user. */
   reset(): void;
+  /**
+   * Registers a listener called just before each `trackPageview` replaces `pageviewId`,
+   * so per-page work (e.g. flushing impressions) is still stamped with the old page view id.
+   * Returns an unsubscribe function.
+   */
+  onBeforePageview(listener: () => void): () => void;
   /** Stops capture and drops buffered events (consent hook). */
   disable(): void;
   /** Resumes capture after {@link Tracker.disable}. */
@@ -91,6 +97,7 @@ export function createTracker(options: TrackerOptions): Tracker {
   let buffer: VantageEvent[] = [];
   let enabled = true;
   let pageviewId: string | undefined;
+  const beforePageview = new Set<() => void>();
 
   let anonId = storage.get(ANON_KEY) ?? uuid();
   storage.set(ANON_KEY, anonId);
@@ -141,6 +148,7 @@ export function createTracker(options: TrackerOptions): Tracker {
   }
 
   function trackPageview(url: string = window.location.href, props?: EventProps): void {
+    for (const listener of [...beforePageview]) listener();
     pageviewId = uuid();
     enqueue({ ...base("pageview", url, props), referrer: document.referrer || null });
   }
@@ -197,6 +205,10 @@ export function createTracker(options: TrackerOptions): Tracker {
       session = { id: uuid(), lastActivity: Date.now() };
       storage.set(SESSION_KEY, JSON.stringify(session));
       pageviewId = undefined;
+    },
+    onBeforePageview(listener) {
+      beforePageview.add(listener);
+      return () => void beforePageview.delete(listener);
     },
     disable() {
       enabled = false;
