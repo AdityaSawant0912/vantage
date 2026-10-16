@@ -38,6 +38,8 @@ Or drop the IIFE build straight into HTML — no bundler needed. It exposes a `V
 | `authKey`          | yes      | —       | Identifies the source. Sent as `?key=` on every request — see below.  |
 | `batchSize`        | no       | `10`    | Events buffered client-side before an automatic flush.                |
 | `flushIntervalMs`  | no       | `5000`  | Max time between flushes, regardless of buffer size.                  |
+| `autoPageview`     | no       | `true`  | Fire a pageview on creation. Set `false` when a router drives pageviews (e.g. Angular). |
+| `sessionTimeoutMs` | no       | `1800000` | Inactivity before `session_id` rotates. See [Identity & sessions](/guides/identity-and-sessions/). |
 
 ## Tracking events
 
@@ -48,10 +50,25 @@ tracker.trackPageview("https://example.com/other-page"); // explicit URL
 tracker.track("signup_clicked");
 tracker.track("checkout_completed");
 
-tracker.flush(); // force-send whatever's buffered, don't wait for the interval
+await tracker.flush(); // force-send whatever's buffered; resolves once the requests settle
 ```
 
-`createTracker` fires a pageview automatically on creation — you don't need to call `trackPageview()` yourself on page load. Call it again yourself for SPA route changes, where there's no full page load to trigger it naturally.
+Custom event names must be lowercase dotted segments (`item.click`, `signup_clicked`), up to 64 characters.
+
+`createTracker` fires a pageview automatically on creation — you don't need to call `trackPageview()` yourself on page load. For SPAs, pass `autoPageview: false` and call `trackPageview()` from your router's navigation hook, so the first view isn't counted twice and every route change is.
+
+Every `trackPageview` starts a new page view id. It is readable as `tracker.pageviewId` and attached to later events as the `pv_id` prop.
+
+## Identity, consent
+
+```ts
+tracker.identify("user-42"); // once, at sign-in
+tracker.reset();             // at logout: new anon_id and session_id
+tracker.disable();           // consent withdrawn: stop capture, drop the buffer
+tracker.enable();
+```
+
+See [Identity & sessions](/guides/identity-and-sessions/) for how the ids work.
 
 ## Custom fields with `props`
 
@@ -73,9 +90,9 @@ The auth key travels as a URL query param (`?key=...`) rather than a header, bec
 Two delivery paths:
 
 - **Normal flush** (interval elapsed, or `batchSize` reached, or `flush()` called): `fetch` with `keepalive: true`.
-- **Tab hidden** (`visibilitychange` → `hidden`, e.g. closing or backgrounding the tab): `navigator.sendBeacon`, which survives page unload in a way a normal `fetch` might not.
+- **Tab hidden** (`visibilitychange` → `hidden`, e.g. closing or backgrounding the tab): `navigator.sendBeacon`, which survives page unload in a way a normal `fetch` might not. Events tracked while the page is already hidden skip the buffer and go out immediately the same way.
 
-Delivery is best-effort. A failed `fetch` is swallowed, not retried — the tracker doesn't buffer to `localStorage` and retry on the next page load. If you're seeing meaningful event loss in the field, that's the first place to extend, not a sign something's broken.
+Delivery is best-effort. A failed `fetch` is swallowed, not retried — the tracker doesn't buffer to `localStorage` and retry on the next page load (every event has a unique `event_id`, so stores can safely dedupe if retries are added later). If you're seeing meaningful event loss in the field, that's the first place to extend, not a sign something's broken.
 
 ## Custom events need a name
 
@@ -84,8 +101,8 @@ tracker.track("signup_clicked"); // fine
 tracker.track(""); // rejected by validateEvent — Handler.ingest returns 400
 ```
 
-`type: "custom"` requires a non-empty `name`; `type: "pageview"` doesn't use `name` at all. Both share the same `VantageEvent` shape validated by `@usevantage/core`'s `validateEvent` — see [`api/core/functions/validateEvent`](/api/core/functions/validateEvent/) for the full rule set.
+`type: "custom"` requires a valid `name` (lowercase dotted segments); `type: "pageview"` doesn't use `name` at all. Both share the same `VantageEvent` shape validated by `@usevantage/core`'s `validateEvent` — see [`api/core/functions/validateEvent`](/api/core/functions/validateEvent/) for the full rule set.
 
 ## Schema version
 
-Every event the tracker sends carries `v: 1` (`EVENT_SCHEMA_VERSION`). If you upgrade `@usevantage/tracker` and `@usevantage/core` independently — likely, since the tracker ships to browsers on your own release cadence while the collector deploys separately — a version mismatch fails validation loudly (`400`, "unsupported schema version") instead of silently misparsing. Keep both packages' major versions in step across a schema bump.
+Every event the tracker sends carries `v: 2` (`EVENT_SCHEMA_VERSION`). If you upgrade `@usevantage/tracker` and `@usevantage/core` independently — likely, since the tracker ships to browsers on your own release cadence while the collector deploys separately — a version mismatch fails validation loudly (`400`, "unsupported schema version") instead of silently misparsing. Keep both packages' major versions in step across a schema bump.

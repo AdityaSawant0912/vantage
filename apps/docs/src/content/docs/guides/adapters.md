@@ -44,6 +44,8 @@ interface StoreAdapter {
 }
 ```
 
+`write` must be **idempotent by `event_id`** (scoped to the event's `sourceId`): queues like Redis and BullMQ can redeliver, so writing the same event twice has to be a no-op, not a duplicate row. The shared contract suite checks this. Scoping the key per source also stops one tenant from suppressing another's event by replaying its id.
+
 Deliberately minimal — no read methods yet. A dashboard's query shape isn't part of this repo (see [PLAN.md §2](https://github.com/AdityaSawant0912/vantage/blob/main/PLAN.md)), so adding reads speculatively would force every adapter to implement queries nothing calls. `MemoryStoreAdapter.getEvents()` and `PostgresStoreAdapter.getEvents()` exist as test/inspection hooks, not contract methods — don't build against them expecting adapter parity.
 
 ## `sourceId` scoping — where tenant isolation actually lives
@@ -90,9 +92,35 @@ const storeAdapter = new PostgresStoreAdapter({
 queueAdapter.consume((event) => processEvent(event, storeAdapter));
 ```
 
-`RedisQueueAdapter` pushes with `LPUSH` and consumes with a blocking `BRPOP` on its own connection — `BRPOP` occupies a connection for the duration of the block, so it can't share one with `push()`. `PostgresStoreAdapter` creates its table on first use (`CREATE TABLE IF NOT EXISTS`); it isn't a migration tool, just enough to be usable out of the box. Both expose a `close()` that's outside the `QueueAdapter`/`StoreAdapter` contract, for test and shutdown cleanup only.
+`RedisQueueAdapter` pushes with `LPUSH` and consumes with a blocking `BRPOP` on its own connection — `BRPOP` occupies a connection for the duration of the block, so it can't share one with `push()`. `PostgresStoreAdapter` creates its table on first use (`CREATE TABLE IF NOT EXISTS`) with a `UNIQUE (source_id, event_id)` constraint and `INSERT ... ON CONFLICT DO NOTHING`; it isn't a migration tool, just enough to be usable out of the box. A table created under schema v1 is never altered — drop and recreate it when upgrading to v2. Both expose a `close()` that's outside the `QueueAdapter`/`StoreAdapter` contract, for test and shutdown cleanup only.
 
 This split is also the reason `@usevantage/core` has zero infra dependencies: nobody self-hosting a single site pulls in `ioredis` or `pg` just by installing `core`.
+
+## BullMQ: retries and backoff
+
+`RedisQueueAdapter` has no retry policy — a throwing handler is logged and the event is gone. If you want retries, use `@usevantage/adapter-bullmq`:
+
+```bash
+npm install @usevantage/adapter-bullmq bullmq
+```
+
+```ts
+import { Queue } from "bullmq";
+import { BullMQQueueAdapter } from "@usevantage/adapter-bullmq";
+
+const connection = { host: "127.0.0.1", port: 6379 };
+const queueAdapter = new BullMQQueueAdapter({
+  queue: new Queue("vantage-events", { connection }), // you own the Queue
+  connection, // used for the consume-side Worker
+  concurrency: 10, // optional, default 10
+});
+
+queueAdapter.consume((event) => processEvent(event, storeAdapter));
+```
+
+`push()` follows the same rule as every adapter — it rejects if the job wasn't enqueued. A handler that throws is retried up to 5 times with exponential backoff starting at 1 second; completed jobs are removed and the last 1000 failed ones are kept. The worker connection is given `maxRetriesPerRequest: null`, which BullMQ requires — if you pass an ioredis instance instead of options, set that yourself.
+
+Delivery is **at-least-once**: a retry can run a handler twice for the same event. Jobs are keyed `sourceId|event_id`, so pushing the same event twice while it's still pending doesn't duplicate it — but that only holds while the job exists, so the `StoreAdapter` being [idempotent by `event_id`](#storeadapter) is what actually prevents duplicate rows. `close()` stops the worker; closing your `Queue` is up to you.
 
 ## Routing events to different queues by `props`
 

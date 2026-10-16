@@ -9,6 +9,10 @@ import type { ScopedEvent } from "./source.js";
  * force every adapter to implement queries nothing calls yet.
  */
 export interface StoreAdapter {
-  /** Persists one already-scoped event. */
+  /**
+   * Persists one already-scoped event. Must be idempotent by `event_id`
+   * (per source): queues like BullMQ deliver at-least-once, so a repeated
+   * write of the same event must be a no-op, not a duplicate row.
+   */
   write(event: ScopedEvent): Promise<void>;
 }

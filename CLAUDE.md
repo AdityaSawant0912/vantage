@@ -47,10 +47,10 @@ stop** — don't quietly work around it.
   caller-owned `poll()`. Every worker process, at every scale, is `queueAdapter
   .consume(event => processEvent(event, storeAdapter))` — one line. Don't
   introduce a polling variant "for flexibility."
-- `push()` delivery semantics are **fixed across all adapters**: [fill in
-  from `PLAN.md §9` once decided — fire-and-forget-with-logging vs
-  propagate-on-failure]. Whichever it is, `adapter-memory` and `adapter-redis`
-  must behave identically here, or `Handler.ingest`'s error handling forks by
+- `push()` delivery semantics are **fixed across all adapters**: **propagate on
+  failure** (`push()` rejects if the event couldn't be durably enqueued; see
+  `PLAN.md §5`). `adapter-memory` and `adapter-redis` (and every later queue
+  adapter) must behave identically here, or `Handler.ingest`'s error handling forks by
   which adapter happens to be wired in.
 - **`sourceId` resolution happens in `Handler`**, from the auth key, before
   anything reaches an adapter. `StoreAdapter` implementations receive

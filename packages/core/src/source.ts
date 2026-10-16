@@ -15,4 +15,6 @@ export type SourceId = string;
 export interface ScopedEvent extends VantageEvent {
   /** Tenant this event belongs to, resolved once by Handler. */
   sourceId: SourceId;
+  /** Server time (epoch ms) at which Handler accepted the event; unlike `timestamp`, not client-controlled. */
+  receivedAt: number;
 }

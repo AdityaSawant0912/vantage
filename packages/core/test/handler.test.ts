@@ -7,7 +7,7 @@ function stubQueue(push: QueueAdapter["push"] = vi.fn().mockResolvedValue(undefi
   return { push, consume: vi.fn() };
 }
 
-const validBody = { v: 1, type: "pageview", url: "https://example.com/", timestamp: Date.now() };
+const validBody = { v: 2, type: "pageview", event_id: "11111111-1111-4111-8111-111111111111", anon_id: "anon-1", session_id: "sess-1", url: "https://example.com/", timestamp: Date.now() };
 
 describe("createHandler().ingest", () => {
   it("returns 401 for an unresolvable auth key", async () => {
@@ -18,7 +18,7 @@ describe("createHandler().ingest", () => {
 
   it("returns 400 for an invalid event body", async () => {
     const handler = createHandler({ queueAdapter: stubQueue(), resolveSourceId: () => "source-1" });
-    const result = await handler.ingest({ authKey: "key", body: { v: 1 } });
+    const result = await handler.ingest({ authKey: "key", body: { v: 2 } });
     expect(result.status).toBe(400);
   });
 
@@ -30,6 +30,43 @@ describe("createHandler().ingest", () => {
     const pushed = push.mock.calls[0]?.[0] as ScopedEvent;
     expect(pushed.sourceId).toBe("source-1");
     expect(pushed.url).toBe(validBody.url);
+  });
+
+  it("stamps receivedAt with server time, not the client timestamp", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_700_000_000_000);
+    try {
+      const push = vi.fn().mockResolvedValue(undefined);
+      const handler = createHandler({ queueAdapter: stubQueue(push), resolveSourceId: () => "source-1" });
+      await handler.ingest({ authKey: "key", body: { ...validBody, timestamp: 42 } });
+      const pushed = push.mock.calls[0]?.[0] as ScopedEvent;
+      expect(pushed.receivedAt).toBe(1_700_000_000_000);
+      expect(pushed.timestamp).toBe(42);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returns 400 for a v1 event, an empty identify user_id, and over-limit props", async () => {
+    const push = vi.fn().mockResolvedValue(undefined);
+    const handler = createHandler({ queueAdapter: stubQueue(push), resolveSourceId: () => "source-1" });
+    for (const body of [
+      { ...validBody, v: 1 },
+      { ...validBody, type: "identify", user_id: "" },
+      { ...validBody, props: { s: "x".repeat(513) } },
+    ]) {
+      expect((await handler.ingest({ authKey: "key", body })).status).toBe(400);
+    }
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the body exceeds the byte limit, even if each prop is within limits", async () => {
+    const push = vi.fn().mockResolvedValue(undefined);
+    const handler = createHandler({ queueAdapter: stubQueue(push), resolveSourceId: () => "source-1" });
+    const props = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`k${i}`, "x".repeat(400)]));
+    const result = await handler.ingest({ authKey: "key", body: { ...validBody, props } });
+    expect(result.status).toBe(400);
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("returns 500 if the queue adapter rejects", async () => {

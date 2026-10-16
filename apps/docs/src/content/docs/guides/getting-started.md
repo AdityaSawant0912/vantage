@@ -71,12 +71,12 @@ npx tsx server.ts
 
 ## 3. Send a test event
 
-The tracker posts events in the shape `VantageEvent` defines — `v`, `type`, `url`, `timestamp` are required. Try it with `curl` before wiring up the real tracker script:
+The tracker posts events in the shape `VantageEvent` defines — `v`, `type`, `event_id`, `anon_id`, `session_id`, `url`, `timestamp` are required. Try it with `curl` before wiring up the real tracker script:
 
 ```bash
 curl -X POST "http://localhost:3000/api/event?key=dev-key-123" \
   -H "Content-Type: application/json" \
-  -d '{"v":1,"type":"pageview","url":"https://example.com/","timestamp":1730000000000}'
+  -d '{"v":2,"type":"pageview","event_id":"3f2b8c1e-5a47-4d0e-9b6a-1c2d3e4f5a6b","anon_id":"anon-1","session_id":"sess-1","url":"https://example.com/","timestamp":1730000000000}'
 ```
 
 A `202` back means it was validated, scoped to `my-site`, and handed to `processEvent`, which wrote it into `MemoryStoreAdapter`. Inspect it:

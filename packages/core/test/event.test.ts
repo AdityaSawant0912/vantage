@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { EVENT_SCHEMA_VERSION, validateEvent } from "../src/event.js";
+import { EVENT_LIMITS, EVENT_SCHEMA_VERSION, validateEvent } from "../src/event.js";
 
 const basePageview = {
   v: EVENT_SCHEMA_VERSION,
   type: "pageview",
+  event_id: "11111111-1111-4111-8111-111111111111",
+  anon_id: "anon-1",
+  session_id: "sess-1",
   url: "https://example.com/",
   timestamp: Date.now(),
 };
@@ -72,5 +75,54 @@ describe("validateEvent", () => {
     const result = validateEvent({ ...basePageview, props: { nested: { a: 1 } } });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors).toContain("props.nested must be a string, number, boolean, or null");
+  });
+
+  it("rejects a v1 event with the unsupported-version error", () => {
+    const result = validateEvent({ ...basePageview, v: 1 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors[0]).toContain("unsupported schema version");
+  });
+
+  it("rejects a missing or malformed event_id", () => {
+    const { event_id: _id, ...rest } = basePageview;
+    expect(validateEvent(rest).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, event_id: "not-a-uuid" }).ok).toBe(false);
+  });
+
+  it.each(["anon_id", "session_id"])("rejects a missing, empty, or over-long %s", (key) => {
+    expect(validateEvent({ ...basePageview, [key]: undefined }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, [key]: "" }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, [key]: "x".repeat(EVENT_LIMITS.maxIdLength + 1) }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, [key]: "x".repeat(EVENT_LIMITS.maxIdLength) }).ok).toBe(true);
+  });
+
+  it("accepts an identify event with a user_id", () => {
+    expect(validateEvent({ ...basePageview, type: "identify", user_id: "user-42" }).ok).toBe(true);
+  });
+
+  it("rejects an identify event with a missing, empty, or over-long user_id", () => {
+    expect(validateEvent({ ...basePageview, type: "identify" }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, type: "identify", user_id: "" }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, type: "identify", user_id: "u".repeat(EVENT_LIMITS.maxUserIdLength + 1) }).ok).toBe(false);
+  });
+
+  it("ignores user_id on non-identify events", () => {
+    expect(validateEvent({ ...basePageview, user_id: "" }).ok).toBe(true);
+  });
+
+  it("accepts dotted lowercase custom names and rejects others", () => {
+    const custom = { ...basePageview, type: "custom" };
+    expect(validateEvent({ ...custom, name: "item.impression" }).ok).toBe(true);
+    expect(validateEvent({ ...custom, name: "Item.Impression" }).ok).toBe(false);
+    expect(validateEvent({ ...custom, name: "item..impression" }).ok).toBe(false);
+    expect(validateEvent({ ...custom, name: "a".repeat(EVENT_LIMITS.maxNameLength + 1) }).ok).toBe(false);
+  });
+
+  it("enforces props key count, key length, and string value length", () => {
+    const tooMany = Object.fromEntries(Array.from({ length: EVENT_LIMITS.maxPropsKeys + 1 }, (_, i) => [`k${i}`, i]));
+    expect(validateEvent({ ...basePageview, props: tooMany }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, props: { ["k".repeat(EVENT_LIMITS.maxPropsKeyLength + 1)]: 1 } }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, props: { s: "x".repeat(EVENT_LIMITS.maxPropsStringLength + 1) } }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, props: { s: "x".repeat(EVENT_LIMITS.maxPropsStringLength) } }).ok).toBe(true);
   });
 });

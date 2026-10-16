@@ -1,4 +1,5 @@
 export {
+  EVENT_LIMITS,
   EVENT_SCHEMA_VERSION,
   validateEvent,
   type EventProps,

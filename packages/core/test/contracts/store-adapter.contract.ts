@@ -1,9 +1,21 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { StoreAdapter } from "../../src/store-adapter.js";
 import type { ScopedEvent, SourceId } from "../../src/source.js";
 
 function eventFor(sourceId: SourceId, url: string, props?: ScopedEvent["props"]): ScopedEvent {
-  return { v: 1, type: "pageview", url, timestamp: Date.now(), sourceId, ...(props ? { props } : {}) };
+  return {
+    v: 2,
+    type: "pageview",
+    event_id: randomUUID(),
+    anon_id: "anon-1",
+    session_id: "sess-1",
+    url,
+    timestamp: Date.now(),
+    sourceId,
+    receivedAt: Date.now(),
+    ...(props ? { props } : {}),
+  };
 }
 
 /**
@@ -52,6 +64,34 @@ export function runStoreAdapterContractTests<A extends StoreAdapter>(
       const events = await options.readEventsForSource(adapter, "test-source");
       expect(events).toHaveLength(1);
       expect(events[0]?.props).toEqual(props);
+    });
+
+    it("treats a duplicate write of the same event_id as a no-op", async () => {
+      const adapter = createAdapter();
+      const event = eventFor("test-source", "https://example.com/");
+      await adapter.write(event);
+      await expect(adapter.write({ ...event })).resolves.toBeUndefined();
+
+      expect(await options.readEventsForSource(adapter, "test-source")).toHaveLength(1);
+    });
+
+    it("persists user_id on identify events", async () => {
+      const adapter = createAdapter();
+      await adapter.write({ ...eventFor("test-source", "https://example.com/"), type: "identify", user_id: "user-42" });
+
+      const events = await options.readEventsForSource(adapter, "test-source");
+      expect(events).toHaveLength(1);
+      expect(events[0]?.type).toBe("identify");
+      expect(events[0]?.user_id).toBe("user-42");
+    });
+
+    it("persists event_id, anon_id, session_id, and receivedAt", async () => {
+      const adapter = createAdapter();
+      const event = eventFor("test-source", "https://example.com/");
+      await adapter.write(event);
+
+      const [stored] = await options.readEventsForSource(adapter, "test-source");
+      expect(stored).toMatchObject({ event_id: event.event_id, anon_id: "anon-1", session_id: "sess-1", receivedAt: event.receivedAt });
     });
   });
 }
