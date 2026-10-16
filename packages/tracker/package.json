@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/tracker",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Client-side drop-in analytics script for Vantage.",
   "type": "module",
   "sideEffects": false,
