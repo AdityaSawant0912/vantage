@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Vantage core — Handler, processEvent, adapter interfaces, event schema/validation. Zero infra dependencies.",
   "type": "module",
   "sideEffects": false,
