@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/example-bullmq-e2e",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "End-to-end check: Handler -> BullMQ -> worker -> Postgres, killing a worker mid-job and confirming the retry.",
   "type": "module",
