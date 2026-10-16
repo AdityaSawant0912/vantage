@@ -1,3 +1,10 @@
+> **Archived 2026-10-16.** This plan predates event schema v2 and is kept for
+> reference only. It still describes schema v1 (`v: 1`, no `event_id` /
+> `anon_id` / `session_id`, no `identify`, no `receivedAt`); see `PLAN.md` §8
+> for what shipped. One item is still open and still applies: `StoreAdapter`
+> has no read method yet (section 0 below) — design it when the dashboard
+> actually needs one, against the v2 event shape.
+
 # Collector + Dashboard — Build Plan (separate project)
 
 This describes a new, separate repo/project — not part of `vantage`. It
