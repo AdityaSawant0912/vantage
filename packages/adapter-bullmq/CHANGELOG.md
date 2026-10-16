@@ -1,5 +1,11 @@
 # @usevantage/adapter-bullmq
 
+## 2.1.0
+
+### Minor Changes
+
+- 706727e: Add `workerOptions` to `BullMQQueueAdapter`: extra BullMQ Worker settings such as `lockDuration` and `stalledInterval`, which control how fast a crashed worker's job is reclaimed.
+
 ## 2.0.0
 
 ### Major Changes
