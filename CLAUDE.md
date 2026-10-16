@@ -76,7 +76,7 @@ stop** — don't quietly work around it.
   adapters). Don't build the Redis adapter before the in-memory path has
   real contract-test coverage. The deployed collector, dashboard, and
   scale-out topology are a separate project now — see
-  `COLLECTOR-DASHBOARD-PLAN.md` — not phases of this repo.
+  `archive/COLLECTOR-DASHBOARD-PLAN.md` (archived) — not phases of this repo.
 - **Write tests alongside each phase, not after.** The event validation and
   source-scoping logic especially are easy to get subtly wrong — write
   cross-tenant isolation tests before considering `StoreAdapter` done, not

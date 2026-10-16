@@ -4,7 +4,7 @@ This is a sequencing and structure plan, not an implementation spec. It's meant 
 
 **Scope note:** the deployed collector + dashboard app is now a separate
 project, not part of this repo — see
-[`COLLECTOR-DASHBOARD-PLAN.md`](./COLLECTOR-DASHBOARD-PLAN.md) for how it
+[`archive/COLLECTOR-DASHBOARD-PLAN.md`](./archive/COLLECTOR-DASHBOARD-PLAN.md) (archived) for how it
 consumes these packages. This repo is the library only: `packages/*`
 (published independently to npm) plus `apps/docs` (their API reference,
 generated from source).
@@ -41,7 +41,7 @@ Kept deliberately small — this is the surface you're committing to keep stable
 - **`Handler.ingest(req)`** — auth source key → validate event shape → `queueAdapter.push(event)` → respond. Stateless, safe to run N-wide behind a load balancer from day one.
 - **`processEvent(event, storeAdapter)`** — enrichment, session stitching, writes. Runs identically whether it's called inline or from a worker loop.
 - **`QueueAdapter` interface** — `push()` + a consume-side contract (adapter-owns-the-loop — locked, see §5).
-- **`StoreAdapter` interface** — write surface, scoped by source. No read methods yet — the collector+dashboard project is what actually needs a read shape; see `COLLECTOR-DASHBOARD-PLAN.md` for that as a prerequisite task on this repo.
+- **`StoreAdapter` interface** — write surface, scoped by source. No read methods yet — the collector+dashboard project is what actually needs a read shape; see `archive/COLLECTOR-DASHBOARD-PLAN.md` for that as a prerequisite task on this repo.
 - **Event schema + validation** — shared by the tracker (what it's allowed to send) and Handler (what it accepts).
 - **Source/tenant model** — how an auth key resolves to a `sourceId`, resolved once in Handler, before anything reaches an adapter.
 
@@ -70,7 +70,7 @@ Client script: pageview capture, custom events, client-side batching, `sendBeaco
 originally Phases 4, 5, and 7 — a deployed collector, its read-path
 dashboard, and multi-instance scale-out. They now live in a separate
 project that imports these packages rather than living in this repo. See
-`COLLECTOR-DASHBOARD-PLAN.md`.
+`archive/COLLECTOR-DASHBOARD-PLAN.md` (archived).
 
 **Retired: "second source" as a phase.** Originally Phase 8's point was
 proving `StoreAdapter` tenant isolation under two real sources sharing one
@@ -144,7 +144,7 @@ every other adapter (rejects if no match and no `default`). It lives in
 
 ## 8. Schema v2 for SK Analytics (added post-1.0.0)
 
-Spec: `Vantage Changes for SK Analytics (schema v2).md`. Shipped as a clean
+Spec: "Vantage Changes for SK Analytics (schema v2)" (SK-side planning doc, since removed from the repo). Shipped as a clean
 major bump (no deployments to migrate). Decisions:
 
 - `EVENT_SCHEMA_VERSION` is now 2. `event_id` (UUID, the idempotency key),
