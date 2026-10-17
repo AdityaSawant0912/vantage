@@ -10,6 +10,16 @@ function stubQueue(push: QueueAdapter["push"] = vi.fn().mockResolvedValue(undefi
 const validBody = { v: 2, type: "pageview", event_id: "11111111-1111-4111-8111-111111111111", anon_id: "anon-1", session_id: "sess-1", url: "https://example.com/", timestamp: Date.now() };
 
 describe("createHandler().ingest", () => {
+  it("honours per-handler limits without affecting other handlers", async () => {
+    const body = { ...validBody, props: { s: "x".repeat(600) } };
+    const loose = createHandler({ queueAdapter: stubQueue(), resolveSourceId: () => "s", limits: { maxPropsStringLength: 1000 } });
+    const strict = createHandler({ queueAdapter: stubQueue(), resolveSourceId: () => "s" });
+    expect((await loose.ingest({ authKey: "k", body })).status).toBe(202);
+    expect((await strict.ingest({ authKey: "k", body })).status).toBe(400);
+    const tiny = createHandler({ queueAdapter: stubQueue(), resolveSourceId: () => "s", limits: { maxBodyBytes: 50 } });
+    expect((await tiny.ingest({ authKey: "k", body: validBody })).status).toBe(400);
+  });
+
   it("returns 401 for an unresolvable auth key", async () => {
     const handler = createHandler({ queueAdapter: stubQueue(), resolveSourceId: () => null });
     const result = await handler.ingest({ authKey: "bad", body: validBody });

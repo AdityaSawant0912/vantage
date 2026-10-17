@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EVENT_LIMITS, EVENT_SCHEMA_VERSION, validateEvent } from "../src/event.js";
 
 const basePageview = {
@@ -124,5 +124,18 @@ describe("validateEvent", () => {
     expect(validateEvent({ ...basePageview, props: { ["k".repeat(EVENT_LIMITS.maxPropsKeyLength + 1)]: 1 } }).ok).toBe(false);
     expect(validateEvent({ ...basePageview, props: { s: "x".repeat(EVENT_LIMITS.maxPropsStringLength + 1) } }).ok).toBe(false);
     expect(validateEvent({ ...basePageview, props: { s: "x".repeat(EVENT_LIMITS.maxPropsStringLength) } }).ok).toBe(true);
+  });
+});
+
+describe("EVENT_LIMITS env overrides", () => {
+  it("applies valid env values and ignores invalid ones", async () => {
+    vi.stubEnv("VANTAGE_MAX_PROPS_STRING_LENGTH", "2000");
+    vi.stubEnv("VANTAGE_MAX_NAME_LENGTH", "nope");
+    vi.resetModules();
+    const mod = await import("../src/event.js");
+    expect(mod.EVENT_LIMITS.maxPropsStringLength).toBe(2000);
+    expect(mod.EVENT_LIMITS.maxNameLength).toBe(64);
+    expect(mod.validateEvent({ ...basePageview, props: { s: "x".repeat(2000) } }).ok).toBe(true);
+    vi.unstubAllEnvs();
   });
 });

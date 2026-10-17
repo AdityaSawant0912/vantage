@@ -5,16 +5,45 @@
  */
 export const EVENT_SCHEMA_VERSION = 2;
 
-/** Limits enforced by {@link validateEvent} and Handler.ingest. */
-export const EVENT_LIMITS = {
-  maxIdLength: 64,
-  maxUserIdLength: 256,
-  maxNameLength: 64,
-  maxPropsKeys: 32,
-  maxPropsKeyLength: 64,
-  maxPropsStringLength: 512,
-  maxBodyBytes: 8192,
-} as const;
+/** Shape of {@link EVENT_LIMITS}; pass a partial of it as `HandlerOptions.limits` or to {@link validateEvent} to override per handler. */
+export interface EventLimits {
+  maxIdLength: number;
+  maxUserIdLength: number;
+  maxNameLength: number;
+  maxPropsKeys: number;
+  maxPropsKeyLength: number;
+  maxPropsStringLength: number;
+  maxBodyBytes: number;
+}
+
+// Core's lib config has no Node types; declare only what envLimit touches (absent in browsers).
+declare const process: { env?: Record<string, string | undefined> } | undefined;
+
+/** Positive-integer env var, or `fallback` when unset/invalid (also when there is no `process`, e.g. browsers). */
+function envLimit(name: string, fallback: number): number {
+  const raw = typeof process !== "undefined" ? process.env?.[name] : undefined;
+  const n = Number(raw);
+  return raw !== undefined && Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
+/**
+ * Limits enforced by {@link validateEvent} and Handler.ingest. Each can be
+ * raised or lowered at startup via an env var (read once, at import):
+ * `VANTAGE_MAX_ID_LENGTH`, `VANTAGE_MAX_USER_ID_LENGTH`, `VANTAGE_MAX_NAME_LENGTH`,
+ * `VANTAGE_MAX_PROPS_KEYS`, `VANTAGE_MAX_PROPS_KEY_LENGTH`,
+ * `VANTAGE_MAX_PROPS_STRING_LENGTH`, `VANTAGE_MAX_BODY_BYTES`. Invalid values
+ * are ignored. Raising a string limit past the body cap also needs a higher
+ * `VANTAGE_MAX_BODY_BYTES`.
+ */
+export const EVENT_LIMITS: EventLimits = {
+  maxIdLength: envLimit("VANTAGE_MAX_ID_LENGTH", 64),
+  maxUserIdLength: envLimit("VANTAGE_MAX_USER_ID_LENGTH", 256),
+  maxNameLength: envLimit("VANTAGE_MAX_NAME_LENGTH", 64),
+  maxPropsKeys: envLimit("VANTAGE_MAX_PROPS_KEYS", 32),
+  maxPropsKeyLength: envLimit("VANTAGE_MAX_PROPS_KEY_LENGTH", 64),
+  maxPropsStringLength: envLimit("VANTAGE_MAX_PROPS_STRING_LENGTH", 512),
+  maxBodyBytes: envLimit("VANTAGE_MAX_BODY_BYTES", 8192),
+};
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NAME_RE = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/;
@@ -64,12 +93,18 @@ export type EventValidationResult =
   | { ok: true; event: VantageEvent }
   | { ok: false; errors: string[] };
 
+/** Per-call overrides on top of the (env-aware) global {@link EVENT_LIMITS}. */
+export function resolveLimits(overrides: Partial<EventLimits> = {}): EventLimits {
+  return { ...EVENT_LIMITS, ...overrides };
+}
+
 /**
  * The single validator shared by the tracker (what it's allowed to send)
  * and Handler.ingest (what it accepts) — the two must never drift onto
  * different shapes.
  */
-export function validateEvent(input: unknown): EventValidationResult {
+export function validateEvent(input: unknown, overrides: Partial<EventLimits> = {}): EventValidationResult {
+  const EVENT_LIMITS = resolveLimits(overrides);
   const errors: string[] = [];
   if (typeof input !== "object" || input === null) {
     return { ok: false, errors: ["event must be an object"] };
