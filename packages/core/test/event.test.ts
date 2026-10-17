@@ -106,8 +106,12 @@ describe("validateEvent", () => {
     expect(validateEvent({ ...basePageview, type: "identify", user_id: "u".repeat(EVENT_LIMITS.maxUserIdLength + 1) }).ok).toBe(false);
   });
 
-  it("ignores user_id on non-identify events", () => {
-    expect(validateEvent({ ...basePageview, user_id: "" }).ok).toBe(true);
+  it("accepts an optional user_id on non-identify events, validated when present", () => {
+    expect(validateEvent(basePageview).ok).toBe(true);
+    expect(validateEvent({ ...basePageview, user_id: "user-42" }).ok).toBe(true);
+    expect(validateEvent({ ...basePageview, user_id: "" }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, user_id: "u".repeat(EVENT_LIMITS.maxUserIdLength + 1) }).ok).toBe(false);
+    expect(validateEvent({ ...basePageview, user_id: 42 }).ok).toBe(false);
   });
 
   it("accepts dotted lowercase custom names and rejects others", () => {

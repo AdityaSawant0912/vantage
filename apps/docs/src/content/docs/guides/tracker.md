@@ -63,8 +63,8 @@ Every `trackPageview` starts a new page view id. It is readable as `tracker.page
 ## Identity, consent
 
 ```ts
-tracker.identify("user-42"); // once, at sign-in
-tracker.reset();             // at logout: new anon_id and session_id
+tracker.identify("user-42"); // once, at sign-in; later events carry user_id
+tracker.reset();             // at logout: new anon_id and session_id, user_id forgotten
 tracker.disable();           // consent withdrawn: stop capture, drop the buffer
 tracker.enable();
 ```

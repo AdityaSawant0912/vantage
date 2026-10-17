@@ -151,15 +151,42 @@ describe("createTracker", () => {
     }
   });
 
-  it("identify sends one identify event and does not stamp user_id on later events", () => {
+  it("identify sends one identify event and stamps user_id on later events", () => {
     const tracker = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
     fetchMock.mockClear();
     tracker.identify("user-42");
     tracker.track("later");
+    tracker.trackPageview();
 
-    const [identify, later] = sentBodies();
+    const [identify, later, pageview] = sentBodies();
     expect(identify).toMatchObject({ type: "identify", user_id: "user-42" });
-    expect(later).not.toHaveProperty("user_id");
+    expect(later).toMatchObject({ type: "custom", user_id: "user-42" });
+    expect(pageview).toMatchObject({ type: "pageview", user_id: "user-42" });
+    for (const body of [identify, later, pageview]) expect(validateEvent(body).ok).toBe(true);
+  });
+
+  it("does not send user_id before identify", () => {
+    createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
+    expect(sentBodies()[0]).not.toHaveProperty("user_id");
+  });
+
+  it("keeps stamping user_id after a reload until reset", () => {
+    const options = { endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 };
+    createTracker(options).identify("user-42");
+    fetchMock.mockClear();
+
+    const reloaded = createTracker(options);
+    reloaded.track("after-reload");
+    expect(sentBodies().map((b) => b.user_id)).toEqual(["user-42", "user-42"]);
+
+    reloaded.reset();
+    fetchMock.mockClear();
+    reloaded.track("after-logout");
+    expect(sentBodies()[0]).not.toHaveProperty("user_id");
+
+    fetchMock.mockClear();
+    createTracker(options);
+    expect(sentBodies()[0]).not.toHaveProperty("user_id");
   });
 
   it("reset rotates both anon_id and session_id", () => {
