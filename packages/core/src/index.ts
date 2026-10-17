@@ -2,6 +2,7 @@ export {
   EVENT_LIMITS,
   EVENT_SCHEMA_VERSION,
   validateEvent,
+  type EventLimits,
   type EventProps,
   type EventType,
   type EventValidationResult,
