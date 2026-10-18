@@ -35,3 +35,25 @@ On logout call `tracker.reset()`: it rotates both `anon_id` and `session_id`, so
 ## Limits
 
 Handler rejects with `400` when `props` has more than 32 keys, a key over 64 characters, a string value over 512 characters, or when the whole body exceeds 8 KB. The same numbers are exported as `EVENT_LIMITS` from `@usevantage/core`. Handler measures the parsed body; cap the raw request size in your transport too.
+
+Every limit can be overridden with an env var, read once when `@usevantage/core` is imported. Invalid (non-integer or ≤ 0) values are ignored.
+
+| Env var | Default |
+| --- | --- |
+| `VANTAGE_MAX_ID_LENGTH` (`anon_id`, `session_id`) | 64 |
+| `VANTAGE_MAX_USER_ID_LENGTH` | 256 |
+| `VANTAGE_MAX_NAME_LENGTH` | 64 |
+| `VANTAGE_MAX_PROPS_KEYS` | 32 |
+| `VANTAGE_MAX_PROPS_KEY_LENGTH` | 64 |
+| `VANTAGE_MAX_PROPS_STRING_LENGTH` | 512 |
+| `VANTAGE_MAX_BODY_BYTES` | 8192 |
+
+To allow 2000-char prop strings, raise both `VANTAGE_MAX_PROPS_STRING_LENGTH` and `VANTAGE_MAX_BODY_BYTES`, or the 8 KB body cap rejects first.
+
+To override for one handler only, pass `limits` (a partial of `EventLimits`) — it wins over the env vars:
+
+```ts
+createHandler({ queueAdapter, resolveSourceId, limits: { maxPropsStringLength: 2000, maxBodyBytes: 32768 } });
+```
+
+`validateEvent(event, limits?)` accepts the same partial.

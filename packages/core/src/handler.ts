@@ -1,4 +1,4 @@
-import { EVENT_LIMITS, validateEvent } from "./event.js";
+import { resolveLimits, validateEvent, type EventLimits } from "./event.js";
 import type { QueueAdapter } from "./queue-adapter.js";
 import type { SourceId } from "./source.js";
 
@@ -35,6 +35,8 @@ export interface HandlerOptions {
   queueAdapter: QueueAdapter;
   /** Resolves an auth key to a sourceId, or null/undefined if the key is unknown. Runs before anything reaches an adapter — this is the one place tenant scoping happens. */
   resolveSourceId: (authKey: string) => SourceId | null | undefined | Promise<SourceId | null | undefined>;
+  /** Per-handler overrides of {@link EVENT_LIMITS} (which env vars already adjust globally). */
+  limits?: Partial<EventLimits>;
 }
 
 /**
@@ -48,6 +50,7 @@ export interface HandlerOptions {
  * @returns An object exposing `ingest(request)`.
  */
 export function createHandler(options: HandlerOptions): { ingest(request: IngestRequest): Promise<IngestResult> } {
+  const limits = resolveLimits(options.limits);
   return {
     async ingest(request) {
       const sourceId = await options.resolveSourceId(request.authKey);
@@ -55,11 +58,11 @@ export function createHandler(options: HandlerOptions): { ingest(request: Ingest
 
       // Measured on the parsed body; a raw-bytes cap before JSON.parse is the transport's job.
       const bodyBytes = utf8ByteLength(JSON.stringify(request.body) ?? "");
-      if (bodyBytes > EVENT_LIMITS.maxBodyBytes) {
-        return { status: 400, errors: [`body exceeds ${EVENT_LIMITS.maxBodyBytes} bytes`] };
+      if (bodyBytes > limits.maxBodyBytes) {
+        return { status: 400, errors: [`body exceeds ${limits.maxBodyBytes} bytes`] };
       }
 
-      const result = validateEvent(request.body);
+      const result = validateEvent(request.body, limits);
       if (!result.ok) return { status: 400, errors: result.errors };
 
       try {
