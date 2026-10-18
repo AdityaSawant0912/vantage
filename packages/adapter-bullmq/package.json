@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/adapter-bullmq",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "BullMQ-backed QueueAdapter for @usevantage/core — retries, backoff, and event_id-keyed jobs.",
   "type": "module",
   "sideEffects": false,

@@ -1,5 +1,12 @@
 # @usevantage/tracker
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies [8ee6b7f]
+  - @usevantage/core@2.1.0
+
 ## 2.2.0
 
 ### Minor Changes

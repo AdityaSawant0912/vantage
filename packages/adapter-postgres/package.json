@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/adapter-postgres",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Postgres-backed StoreAdapter for @usevantage/core.",
   "type": "module",
   "sideEffects": false,
