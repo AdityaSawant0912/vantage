@@ -1,5 +1,12 @@
 # @usevantage/adapter-postgres
 
+## 4.0.0
+
+### Patch Changes
+
+- Updated dependencies [0aef1a8]
+  - @usevantage/core@2.2.0
+
 ## 3.0.0
 
 ### Patch Changes
