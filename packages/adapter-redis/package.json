@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/adapter-redis",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Redis-backed QueueAdapter for @usevantage/core — pulled in only at scale.",
   "type": "module",
   "sideEffects": false,
