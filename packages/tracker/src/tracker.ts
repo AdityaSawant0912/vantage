@@ -26,9 +26,9 @@ export interface Tracker {
   trackPageview(url?: string, props?: EventProps): void;
   /** Records a custom event with the given name (lowercase dotted segments, e.g. "item.click"). `props` is app-defined, e.g. for queue routing. */
   track(name: string, props?: EventProps): void;
-  /** Sends one `identify` event linking this visitor to `userId`. Later events are not stamped with it; the collector joins by `session_id`. */
+  /** Sends one `identify` event linking this visitor to `userId`, and stamps `user_id` on every later event (persisted in localStorage, so it survives reloads until `reset()`). */
   identify(userId: string): void;
-  /** For logout: rotates both `session_id` and `anon_id` so the next visitor isn't linked to the previous user. */
+  /** For logout: rotates both `session_id` and `anon_id` and forgets the `user_id`, so the next visitor isn't linked to the previous user. */
   reset(): void;
   /**
    * Registers a listener called just before each `trackPageview` replaces `pageviewId`,
@@ -50,6 +50,7 @@ const DEFAULT_BATCH_SIZE = 10;
 const DEFAULT_FLUSH_INTERVAL_MS = 5000;
 const DEFAULT_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const ANON_KEY = "vantage_anon_id";
+const USER_KEY = "vantage_user_id";
 const SESSION_KEY = "vantage_session";
 const QUEUE_KEY = "vantage_queue";
 const MAX_PERSISTED = 200;
@@ -111,6 +112,9 @@ export function createTracker(options: TrackerOptions): Tracker {
   let anonId = storage.get(ANON_KEY) ?? uuid();
   storage.set(ANON_KEY, anonId);
 
+  // "" is how reset() clears it (storage has no remove); falsy means anonymous.
+  let userId = storage.get(USER_KEY) || undefined;
+
   let session = readSession();
 
   function readSession(): { id: string; lastActivity: number } {
@@ -142,6 +146,7 @@ export function createTracker(options: TrackerOptions): Tracker {
       event_id: uuid(),
       anon_id: anonId,
       session_id: touchSession(now),
+      ...(userId ? { user_id: userId } : {}),
       url,
       timestamp: now,
       ...(Object.keys(merged).length > 0 ? { props: merged } : {}),
@@ -191,8 +196,10 @@ export function createTracker(options: TrackerOptions): Tracker {
     enqueue({ ...base("custom", window.location.href, props), name });
   }
 
-  function identify(userId: string): void {
-    enqueue({ ...base("identify", window.location.href), user_id: userId });
+  function identify(id: string): void {
+    userId = id;
+    storage.set(USER_KEY, id);
+    enqueue(base("identify", window.location.href));
   }
 
   function send(event: VantageEvent, useBeacon: boolean): Promise<void> {
@@ -243,6 +250,8 @@ export function createTracker(options: TrackerOptions): Tracker {
     reset() {
       anonId = uuid();
       storage.set(ANON_KEY, anonId);
+      userId = undefined;
+      storage.set(USER_KEY, "");
       session = { id: uuid(), lastActivity: Date.now() };
       storage.set(SESSION_KEY, JSON.stringify(session));
       pageviewId = undefined;

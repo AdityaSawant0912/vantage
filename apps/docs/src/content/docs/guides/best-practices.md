@@ -35,7 +35,7 @@ type IngestResult =
 
 ## Identify once, keep personal data out of `props`
 
-Call `tracker.identify(userId)` once when a visitor signs in (not on every page) — the collector joins it to earlier and later events by `session_id`/`anon_id`, so repeating it just adds rows. Use an opaque id, never an email or name. The same goes for `props`: it is persisted as-is by every store and can be routed on, so don't put personal data in it. Call `tracker.reset()` on logout. See [Identity & sessions](/guides/identity-and-sessions/).
+Call `tracker.identify(userId)` once when a visitor signs in (not on every page) — the tracker stamps `user_id` on every later event, so repeating it just adds rows. Prefer an opaque id over an email or name, since `user_id` is persisted on every event; use a natural key such as an email only if a downstream consumer must match on it. The same goes for `props`: it is persisted as-is by every store and can be routed on, so don't put personal data in it. Call `tracker.reset()` on logout. See [Identity & sessions](/guides/identity-and-sessions/).
 
 ## Scaling past one process
 

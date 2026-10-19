@@ -75,7 +75,7 @@ export interface VantageEvent {
   anon_id: string;
   /** Rotates after inactivity, 1-64 chars. */
   session_id: string;
-  /** Required (opaque, up to 256 chars) when type is "identify"; ignored otherwise. */
+  /** Opaque, up to 256 chars. Required when type is "identify"; on any other type it is optional and stamped by the tracker once the visitor is identified. */
   user_id?: string;
   /** Required when type is "custom": lowercase dotted segments such as `item.impression`, up to 64 chars. */
   name?: string;
@@ -133,9 +133,9 @@ export function validateEvent(input: unknown, overrides: Partial<EventLimits> = 
       errors.push(`name must be lowercase dotted segments (e.g. item.impression), up to ${EVENT_LIMITS.maxNameLength} characters`);
     }
   }
-  if (e.type === "identify") {
+  if (e.type === "identify" || e.user_id !== undefined) {
     if (typeof e.user_id !== "string" || e.user_id.length === 0 || e.user_id.length > EVENT_LIMITS.maxUserIdLength) {
-      errors.push(`user_id must be a string of 1 to ${EVENT_LIMITS.maxUserIdLength} characters when type is "identify"`);
+      errors.push(`user_id must be a string of 1 to ${EVENT_LIMITS.maxUserIdLength} characters${e.type === "identify" ? ' when type is "identify"' : " when present"}`);
     }
   }
   if (typeof e.url !== "string" || e.url.length === 0) {

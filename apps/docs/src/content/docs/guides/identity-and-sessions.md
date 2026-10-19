@@ -20,9 +20,11 @@ Schema v2 promotes the ids every consumer needs out of `props` into core fields.
 tracker.identify("user-42");
 ```
 
-`identify` sends a single event of `type: "identify"` carrying `user_id` (opaque, up to 256 characters). It does **not** stamp `user_id` onto later events — the collector joins by `session_id` / `anon_id`. Call it once at sign-in, not on every page.
+`identify` sends a single event of `type: "identify"` carrying `user_id` (up to 256 characters), then stamps that `user_id` onto **every later event** — pageviews and custom events included — so consumers can attribute an event to a user without joining on `anon_id` / `session_id`. The id is persisted in `localStorage` (key `vantage_user_id`), so it survives reloads: call `identify` once at sign-in, not on every page. Events sent before `identify` carry no `user_id`; there is no retroactive stitching.
 
-On logout call `tracker.reset()`: it rotates both `anon_id` and `session_id`, so the next person on the same browser isn't linked to the previous user.
+`user_id` is optional on every event type and validated (1–256 characters) whenever it is present; it is required only on `identify`. The schema version is unchanged (still 2), since a v2 event without it stays valid.
+
+On logout call `tracker.reset()`: it rotates both `anon_id` and `session_id` and forgets the `user_id`, so the next person on the same browser isn't linked to the previous user.
 
 ## Idempotency
 
