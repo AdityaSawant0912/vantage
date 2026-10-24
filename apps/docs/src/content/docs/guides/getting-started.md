@@ -33,7 +33,8 @@ const queueAdapter = new MemoryQueueAdapter();
 const storeAdapter = new MemoryStoreAdapter();
 
 // A real deployment looks this up in a database. For a single site, a
-// static map from auth key to sourceId is enough.
+// static map from auth key to sourceId is enough. (With exactly one site
+// you can skip the key entirely: `createHandler({ queueAdapter, sourceId: "my-site" })`.)
 const sources = new Map([["dev-key-123", "my-site"]]);
 
 const handler = createHandler({

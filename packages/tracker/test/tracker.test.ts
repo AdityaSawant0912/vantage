@@ -17,6 +17,12 @@ describe("createTracker", () => {
     vi.restoreAllMocks();
   });
 
+  it("omits the key query param when authKey is not set", () => {
+    createTracker({ endpoint: "https://collector.example/event", batchSize: 1 });
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toBe("https://collector.example/event");
+  });
+
   it("sends an initial pageview on creation, keyed via the URL", () => {
     createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
 

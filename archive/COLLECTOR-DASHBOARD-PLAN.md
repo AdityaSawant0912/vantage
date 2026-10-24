@@ -141,6 +141,23 @@ function reading from a small sources table instead of env vars — a
 config/data change, not an architecture change, per PLAN.md §3's
 "retired: second source" note.
 
+**Single-source shortcut:** with exactly one source the key routes
+nothing. Drop `lib/auth.ts` and the tracker's `authKey`, set only
+`VANTAGE_SOURCE_ID`, and call `createHandler({ queueAdapter })` (core reads
+the env var). Keep the key-based path above if a second source is likely.
+
+### Future hardening (not built yet)
+
+The ingest endpoint is public, and so is any key the tracker sends. If the
+collector gets flooded, add these in the route/transport layer (core sees no
+IP or `Origin`, so none of it belongs in `Handler`):
+
+- `Origin` allowlist (`403` on mismatch). Stops cross-site abuse only; bots can spoof it.
+- Rate limits per IP and per `anon_id`: `429` + `Retry-After`. In-memory for one process, Redis `INCR`+`EXPIRE` for a fleet. Honor `x-forwarded-for` only behind a configured trusted proxy.
+- Raw body cap before `JSON.parse` (the comment in `handler.ts` already assigns this to the transport).
+- Tracker change that must ship with the above: `429` has to be retryable. Today any 4xx drops the event (`tracker.ts` send path), which would lose events during a rate-limit window.
+- Escalation if a flood persists: server-issued signed token (`POST /token`, HMAC with `exp`/`jti`, stateless verify, `jti` denylist for revocation). Gate issuance with rate limits or proof-of-work, otherwise bots just mint tokens. A client-generated key is not an option: nothing to verify.
+
 ---
 
 ## 5. Adapter selection
