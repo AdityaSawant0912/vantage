@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHandler } from "../src/handler.js";
 import type { QueueAdapter } from "../src/queue-adapter.js";
 import type { ScopedEvent } from "../src/source.js";
@@ -10,6 +10,38 @@ function stubQueue(push: QueueAdapter["push"] = vi.fn().mockResolvedValue(undefi
 const validBody = { v: 2, type: "pageview", event_id: "11111111-1111-4111-8111-111111111111", anon_id: "anon-1", session_id: "sess-1", url: "https://example.com/", timestamp: Date.now() };
 
 describe("createHandler().ingest", () => {
+  describe("single-source mode", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("scopes to the sourceId option and ignores the auth key", async () => {
+      const push = vi.fn().mockResolvedValue(undefined);
+      const handler = createHandler({ queueAdapter: stubQueue(push), sourceId: "only" });
+      expect((await handler.ingest({ body: validBody })).status).toBe(202);
+      expect((await handler.ingest({ authKey: "anything", body: validBody })).status).toBe(202);
+      expect((push.mock.calls[0]?.[0] as ScopedEvent).sourceId).toBe("only");
+    });
+
+    it("falls back to VANTAGE_SOURCE_ID, and the option beats it", async () => {
+      vi.stubEnv("VANTAGE_SOURCE_ID", "from-env");
+      const push = vi.fn().mockResolvedValue(undefined);
+      await createHandler({ queueAdapter: stubQueue(push) }).ingest({ body: validBody });
+      await createHandler({ queueAdapter: stubQueue(push), sourceId: "from-code" }).ingest({ body: validBody });
+      expect(push.mock.calls.map((c) => (c[0] as ScopedEvent).sourceId)).toEqual(["from-env", "from-code"]);
+    });
+
+    it("keeps resolveSourceId authoritative over the env var", async () => {
+      vi.stubEnv("VANTAGE_SOURCE_ID", "from-env");
+      const handler = createHandler({ queueAdapter: stubQueue(), resolveSourceId: () => null });
+      expect(await handler.ingest({ authKey: "k", body: validBody })).toEqual({ status: 401 });
+    });
+
+    it("throws at construction on missing or ambiguous config", () => {
+      vi.stubEnv("VANTAGE_SOURCE_ID", "");
+      expect(() => createHandler({ queueAdapter: stubQueue() })).toThrow(/VANTAGE_SOURCE_ID/);
+      expect(() => createHandler({ queueAdapter: stubQueue(), sourceId: "a", resolveSourceId: () => "b" })).toThrow(/not both/);
+    });
+  });
+
   it("honours per-handler limits without affecting other handlers", async () => {
     const body = { ...validBody, props: { s: "x".repeat(600) } };
     const loose = createHandler({ queueAdapter: stubQueue(), resolveSourceId: () => "s", limits: { maxPropsStringLength: 1000 } });

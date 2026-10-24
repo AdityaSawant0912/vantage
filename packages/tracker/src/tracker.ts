@@ -3,8 +3,8 @@ import type { EventProps, VantageEvent } from "@usevantage/core";
 export interface TrackerOptions {
   /** Collector ingest URL, e.g. "https://analytics.example.com/api/event". */
   endpoint: string;
-  /** Sent as a URL query param on every request (see below for why). */
-  authKey: string;
+  /** Sent as a URL query param on every request (see below for why). Omit for a single-source collector that ignores it. */
+  authKey?: string;
   /** Buffered events before an automatic flush. Default 10. */
   batchSize?: number;
   /** Max time between flushes, ms. Default 5000. */
@@ -101,7 +101,7 @@ export function createTracker(options: TrackerOptions): Tracker {
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
   const flushIntervalMs = options.flushIntervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;
   const sessionTimeoutMs = options.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
-  const ingestUrl = `${options.endpoint}?key=${encodeURIComponent(options.authKey)}`;
+  const ingestUrl = options.authKey === undefined ? options.endpoint : `${options.endpoint}?key=${encodeURIComponent(options.authKey)}`;
   const storage = createStorage();
   const persist = options.persistQueue ?? false;
   let buffer: VantageEvent[] = [];

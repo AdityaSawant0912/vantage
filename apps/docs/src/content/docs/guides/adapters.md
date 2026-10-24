@@ -65,7 +65,7 @@ createHandler({
 });
 ```
 
-Adapters are trusted to persist whatever `sourceId` they're handed as-is — they must not re-derive or re-check tenant identity themselves. This is deliberate: if every adapter re-implemented scoping, tenant isolation would be an adapter-by-adapter bug surface instead of one guarantee, enforced in one place. Don't add source-lookup logic inside a custom adapter; do it in `resolveSourceId`.
+Adapters are trusted to persist whatever `sourceId` they're handed as-is — they must not re-derive or re-check tenant identity themselves. This is deliberate: if every adapter re-implemented scoping, tenant isolation would be an adapter-by-adapter bug surface instead of one guarantee, enforced in one place. Don't add source-lookup logic inside a custom adapter; do it in `resolveSourceId` (or pin one source with `createHandler({ sourceId })`, which is still resolved in `Handler`).
 
 ## Swapping in real infra
 

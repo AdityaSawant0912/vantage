@@ -35,7 +35,7 @@ Or drop the IIFE build straight into HTML — no bundler needed. It exposes a `V
 | Option            | Required | Default | Notes                                                                 |
 | ------------------ | -------- | ------- | ---------------------------------------------------------------------- |
 | `endpoint`         | yes      | —       | Your collector's ingest URL.                                          |
-| `authKey`          | yes      | —       | Identifies the source. Sent as `?key=` on every request — see below.  |
+| `authKey`          | no       | —       | Identifies the source. Sent as `?key=` on every request — see below. Omit it for a [single-source collector](/guides/best-practices/#single-source-mode). |
 | `batchSize`        | no       | `10`    | Events buffered client-side before an automatic flush.                |
 | `flushIntervalMs`  | no       | `5000`  | Max time between flushes, regardless of buffer size.                  |
 | `autoPageview`     | no       | `true`  | Fire a pageview on creation. Set `false` when a router drives pageviews (e.g. Angular). |

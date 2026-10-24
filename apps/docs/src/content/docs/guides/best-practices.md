@@ -13,6 +13,18 @@ sidebar:
 - **`resolveSourceId` can be async.** Use it for a real database lookup without wrapping `createHandler` in extra plumbing.
 - **Rotate keys by changing what `resolveSourceId` accepts**, not by changing the tracker's validation. Key rotation is a collector-side concern; the schema doesn't know about auth at all.
 
+### Single-source mode {#single-source-mode}
+
+With one site there is nothing to route, so the key is redundant. Skip `resolveSourceId` and pin the source instead:
+
+```ts
+createHandler({ queueAdapter, sourceId: "my-site" }); // or set VANTAGE_SOURCE_ID
+```
+
+Every event is scoped to that `sourceId` and `authKey` is ignored (omit `authKey` from `createTracker` too). The code option beats `VANTAGE_SOURCE_ID`; `createHandler` throws at startup if neither nor `resolveSourceId` is set, or if you pass both `sourceId` and `resolveSourceId`.
+
+Don't replace the key with one the client generates. A client-made key is unauthenticated: an attacker mints a fresh one per request, so dropping "forged" keys blocks nothing while honest clients pay. The `?key=` value is public anyway (it's in your page source). Defend a public endpoint at the transport instead: an `Origin` allowlist, rate limits per IP and per `anon_id`, and a raw body cap before `JSON.parse`.
+
 ### Don't log auth keys {#dont-log-auth-keys}
 
 The tracker sends the auth key as a URL query param (`?key=...`), not a header — see [why in the tracker guide](/guides/tracker/#how-delivery-actually-works). If your collector or any reverse proxy in front of it logs full request URLs, that leaks keys into logs. Strip or redact the `key` param before logging, or log method + path only.
