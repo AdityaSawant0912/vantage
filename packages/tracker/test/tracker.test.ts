@@ -41,7 +41,7 @@ describe("createTracker", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
-    expect(body.props).toEqual({ pv_id: expect.any(String), category: "checkout", value: 42 });
+    expect(body.props).toEqual({ pv_id: expect.any(String), seq: 1, category: "checkout", value: 42 });
   });
 
   it("adds only the automatic pv_id prop when no props are given", () => {
@@ -49,7 +49,7 @@ describe("createTracker", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
-    expect(body.props).toEqual({ pv_id: expect.any(String) });
+    expect(body.props).toEqual({ pv_id: expect.any(String), seq: 0 });
   });
 
   it("buffers events until batchSize is reached", () => {
@@ -211,13 +211,50 @@ describe("createTracker", () => {
     expect(tracker.pageviewId).toBeUndefined();
   });
 
+  it("chains each pageview to the previous one and restarts seq", () => {
+    const tracker = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
+    const first = tracker.pageviewId;
+    tracker.track("a");
+    tracker.trackPageview("https://example.test/next");
+    tracker.track("b");
+
+    const props = sentBodies().map((b) => b.props as Record<string, unknown>);
+    expect(props[0]).not.toHaveProperty("prev_pv_id");
+    expect(props.map((p) => p.seq)).toEqual([0, 1, 0, 1]);
+    expect(props[2]?.prev_pv_id).toBe(first);
+    expect(props[3]).not.toHaveProperty("prev_pv_id");
+  });
+
+  it("stamps later events with their page view's url, not the router's current one", () => {
+    const tracker = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1, autoPageview: false });
+    tracker.trackPageview("https://example.test/a?x=1");
+    window.history.pushState({}, "", "/moved-on");
+    tracker.track("page.leave");
+
+    expect(sentBodies().map((b) => b.url)).toEqual(["https://example.test/a?x=1", "https://example.test/a?x=1"]);
+  });
+
+  it("keeps prev_pv_id across a reload but not across reset()", () => {
+    const first = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
+    const firstPv = first.pageviewId;
+    fetchMock.mockClear();
+
+    const reloaded = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
+    expect((sentBodies()[0]?.props as Record<string, unknown>).prev_pv_id).toBe(firstPv);
+
+    reloaded.reset();
+    fetchMock.mockClear();
+    reloaded.trackPageview("https://example.test/after-reset");
+    expect(sentBodies()[0]?.props).not.toHaveProperty("prev_pv_id");
+  });
+
   it("attaches pv_id to later events and exposes it as pageviewId", () => {
     const tracker = createTracker({ endpoint: "https://collector.example/event", authKey: "key1", batchSize: 1 });
     tracker.track("click", { a: 1 });
 
     const [pageview, click] = sentBodies();
     expect((pageview?.props as Record<string, unknown>).pv_id).toBe(tracker.pageviewId);
-    expect(click?.props).toEqual({ pv_id: tracker.pageviewId, a: 1 });
+    expect(click?.props).toEqual({ pv_id: tracker.pageviewId, seq: 1, a: 1 });
 
     const firstId = tracker.pageviewId;
     tracker.trackPageview("https://example.test/next");

@@ -58,7 +58,7 @@ Custom event names must be lowercase dotted segments (`item.click`, `signup_clic
 
 `createTracker` fires a pageview automatically on creation — you don't need to call `trackPageview()` yourself on page load. For SPAs, pass `autoPageview: false` and call `trackPageview()` from your router's navigation hook, so the first view isn't counted twice and every route change is.
 
-Every `trackPageview` starts a new page view id. It is readable as `tracker.pageviewId` and attached to later events as the `pv_id` prop.
+Every `trackPageview` starts a new page view id. It is readable as `tracker.pageviewId` and attached to later events as the `pv_id` prop. Every event in a page view also carries `seq`, a counter that starts at 0 on the pageview, so you can order events by what the visitor did rather than by arrival. Each pageview carries `prev_pv_id` (the page view it followed, kept in `localStorage` so it survives reloads); it is absent on a visitor's first page view and after `reset()`. Non-pageview events (including `page.leave`) carry the `url` of the page view they belong to, not wherever the router has moved by the time they fire.
 
 ## Identity, consent
 
