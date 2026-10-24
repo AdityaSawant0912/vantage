@@ -1,5 +1,14 @@
 # @usevantage/example-bullmq-e2e
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [5ba365e]
+  - @usevantage/core@2.3.0
+  - @usevantage/adapter-bullmq@5.0.0
+  - @usevantage/adapter-postgres@5.0.0
+
 ## 0.0.3
 
 ### Patch Changes

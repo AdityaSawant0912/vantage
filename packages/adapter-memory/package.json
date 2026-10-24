@@ -1,6 +1,6 @@
 {
   "name": "@usevantage/adapter-memory",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "In-process QueueAdapter + StoreAdapter — the zero-infra default for @usevantage/core.",
   "type": "module",
   "sideEffects": false,
