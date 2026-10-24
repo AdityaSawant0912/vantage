@@ -13,6 +13,8 @@ Schema v2 promotes the ids every consumer needs out of `props` into core fields.
 | `session_id` | `localStorage` | After `sessionTimeoutMs` (default 30 min) of inactivity, or on `reset()` |
 | `event_id` | One UUID per event | Always — it is the idempotency key |
 | `pv_id` | A `props` entry, not a core field | On every `trackPageview` |
+| `prev_pv_id` | A `props` entry on pageview events; `localStorage` | Set to the previous `pv_id`; cleared on `reset()` |
+| `seq` | A `props` entry on every event in a page view | Restarts at 0 on every `trackPageview` |
 
 ## Linking a visitor to a user
 

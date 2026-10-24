@@ -42,7 +42,7 @@ export interface Tracker {
   enable(): void;
   /** Sends any buffered events immediately, bypassing batchSize/flushIntervalMs; resolves once every request has settled. */
   flush(): Promise<void>;
-  /** Id of the current page view (also attached to later events as the `pv_id` prop); undefined before the first pageview. */
+  /** Id of the current page view (also attached to later events as the `pv_id` prop, with a per-page-view `seq` counter starting at 0 on the pageview; each pageview also carries `prev_pv_id`, persisted across reloads); undefined before the first pageview. */
   readonly pageviewId: string | undefined;
 }
 
@@ -52,6 +52,7 @@ const DEFAULT_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const ANON_KEY = "vantage_anon_id";
 const USER_KEY = "vantage_user_id";
 const SESSION_KEY = "vantage_session";
+const PV_KEY = "vantage_pv_id";
 const QUEUE_KEY = "vantage_queue";
 const MAX_PERSISTED = 200;
 
@@ -107,6 +108,8 @@ export function createTracker(options: TrackerOptions): Tracker {
   let buffer: VantageEvent[] = [];
   let enabled = true;
   let pageviewId: string | undefined;
+  let seq = 0;
+  let pageviewUrl: string | undefined;
   const beforePageview = new Set<() => void>();
 
   let anonId = storage.get(ANON_KEY) ?? uuid();
@@ -138,8 +141,11 @@ export function createTracker(options: TrackerOptions): Tracker {
   }
 
   function base(type: VantageEvent["type"], url: string, props?: EventProps): VantageEvent {
+    // Events belong to the page view that's live, not to wherever the router has since moved
+    // (page.leave and flushed impressions fire after the URL has already changed).
+    if (type !== "pageview" && pageviewId && pageviewUrl) url = pageviewUrl;
     const now = Date.now();
-    const merged: EventProps = { ...(pageviewId ? { pv_id: pageviewId } : {}), ...props };
+    const merged: EventProps = { ...(pageviewId ? { pv_id: pageviewId, seq: seq++ } : {}), ...props };
     return {
       v: 2,
       type,
@@ -188,8 +194,13 @@ export function createTracker(options: TrackerOptions): Tracker {
 
   function trackPageview(url: string = window.location.href, props?: EventProps): void {
     for (const listener of [...beforePageview]) listener();
+    // Falls back to storage so the chain survives full reloads / MPA navigation; "" (after reset) means none.
+    const prev = pageviewId ?? (storage.get(PV_KEY) || undefined);
     pageviewId = uuid();
-    enqueue({ ...base("pageview", url, props), referrer: document.referrer || null });
+    storage.set(PV_KEY, pageviewId);
+    seq = 0;
+    pageviewUrl = url;
+    enqueue({ ...base("pageview", url, { ...(prev ? { prev_pv_id: prev } : {}), ...props }), referrer: document.referrer || null });
   }
 
   function track(name: string, props?: EventProps): void {
@@ -255,6 +266,8 @@ export function createTracker(options: TrackerOptions): Tracker {
       session = { id: uuid(), lastActivity: Date.now() };
       storage.set(SESSION_KEY, JSON.stringify(session));
       pageviewId = undefined;
+      pageviewUrl = undefined;
+      storage.set(PV_KEY, ""); // a new visitor must not chain to the old one
     },
     onBeforePageview(listener) {
       beforePageview.add(listener);
