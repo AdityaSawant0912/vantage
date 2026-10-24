@@ -1,5 +1,12 @@
 # @usevantage/adapter-bullmq
 
+## 5.0.0
+
+### Patch Changes
+
+- Updated dependencies [5ba365e]
+  - @usevantage/core@2.3.0
+
 ## 4.0.0
 
 ### Patch Changes
